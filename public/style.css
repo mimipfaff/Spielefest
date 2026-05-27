@@ -779,13 +779,14 @@ input[type="range"] {
   position: fixed;
   right: 62px;     /* zentriert über joyRight (Mitte bei right: 82px) */
   bottom: 164px;   /* 12px Abstand über dem Joystick-Rand */
-  width:  40px;
-  height: 40px;
+  width:  44px;
+  height: 44px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.20);
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 17px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(6px);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 18px;
   line-height: 1;
   cursor: pointer;
   display: flex;
@@ -795,13 +796,16 @@ input[type="range"] {
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.cam-center-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
 }
 .cam-center-btn.active {
-  background: rgba(56, 189, 248, 0.28);
-  border-color: rgba(56, 189, 248, 0.72);
-  color: #7dd3fc;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.35);
+  border-color: rgba(56, 189, 248, 0.80);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.50);
 }
 
 /* ── Panels über Joysticks anheben (immer, wenn Sticks sichtbar) */
