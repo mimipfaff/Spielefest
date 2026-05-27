@@ -176,32 +176,35 @@ function _faceMat(faceData) {
 /**
  * Fügt dem Kopf-Group eine geometrische Haar-Form hinzu.
  *
- * Kappe: Kugel mit HAIR_R, exakt bei z=CUT_Z vorne abgeschnitten —
- *   dieselbe Schnitt-Technik wie die Kopfsphäre. Kein depthWrite-Trick nötig,
- *   da die Geometrie geometrisch nie vor der Gesichtsscheibe liegt.
- *   faceDisc.renderOrder=1 verhindert z-Fighting am Rand.
+ * Kappe (kurz + lang):
+ *   SphereGeometry mit HAIR_R, phi ∈ [π/2, π] (phiLength=π).
+ *   Nach rotateX(π/2) gilt: new_y = −r·sin(θ)·cos(φ)
+ *   → phi ∈ [π/2, 3π/2] liefert new_y ≥ 0 (obere Hälfte, Ohrhöhe = y=0).
+ *   theta ∈ [cutTheta, π] schneidet vorne bei z = CUT_Z ab.
+ *   Beide Schnittkanten fallen exakt auf die Gesichtsscheibenkante (x=±discR, y=0, z=CUT_Z).
  *
- * Langer Vorhang: Halbzylinder (offener Bogen), dessen Öffnungs-Winkel
- *   exakt bei z=CUT_Z endet — deckt nahtlos die gleiche Schnittlinie wie
- *   die Kappe ab; Bogen läuft um die Rückseite bis kurz über den Hals.
+ * Vorhang (nur lang):
+ *   CylinderGeometry: z = r·cos(θ) → z = CUT_Z bei θ = arccos(CUT_Z/r).
+ *   Bogen von rechter Schnittkante (θ=tCut) um Rückseite zur linken (θ=2π−tCut).
+ *   Top bei y=0 (nahtlos am Kappenrand), Bottom bei y=−CURTAIN_H (kurz über Hals).
  */
 function _addHair(headGroup, style, colorHex) {
-  const HEAD_R = 0.58;
-  const HAIR_R = 0.607;   // knapp größer als HEAD_R → liegt auf dem Kopf auf
+  const HAIR_R = 0.607;   // knapp größer als HEAD_R=0.58 → liegt auf dem Kopf auf
   const CUT_Z  = 0.28;    // Gesichtsebene
 
   const mat = new THREE.MeshLambertMaterial({
-    color:    colorHex,
-    side:     THREE.DoubleSide   // Innen-Fläche sichtbar (offene Zylinderränder)
+    color: colorHex,
+    side:  THREE.DoubleSide   // offene Ränder beidseitig sichtbar
   });
 
-  // ── Kappe (kurz + lang): Kugel wie Kopfsphäre, aber HAIR_R groß ──
-  // thetaStart = Polwinkel an z=CUT_Z, thetaLength = Rest bis Hinterpol
-  const capCutTheta = Math.acos(CUT_Z / HAIR_R);
+  // ── Kappe: obere Hälfte der Haarkugel (y ≥ 0), vorne bei z=CUT_Z ─
+  // SphereGeometry: phi [π/2, π] → nach rotateX entspricht das y ≥ 0
+  // theta [cutTheta, π] → hinter die Gesichtsscheibe (z ≤ CUT_Z)
+  const cutTheta = Math.acos(CUT_Z / HAIR_R);   // ≈ 1.091 rad
   const capGeo = new THREE.SphereGeometry(
     HAIR_R, 22, 16,
-    0, Math.PI * 2,
-    capCutTheta, Math.PI - capCutTheta
+    Math.PI / 2, Math.PI,        // phi: π/2 → 3π/2 (obere Hälfte nach Rotation)
+    cutTheta, Math.PI - cutTheta  // theta: Gesichtsschnitt → Hinterpol
   );
   capGeo.rotateX(Math.PI / 2);
   const cap = new THREE.Mesh(capGeo, mat);
@@ -209,24 +212,24 @@ function _addHair(headGroup, style, colorHex) {
   headGroup.add(cap);
 
   if (style === 'long') {
-    // ── Vorhang: Halbzylinder, Bogen endet bündig bei z=CUT_Z ──────
-    // phiCut = Zylinderwinkel, an dem z = CUT_Z gilt (z = r·sin φ)
-    // Bogen: linke Schnittkante (φ = π−phiCut) → Rückseite → rechte (φ = phiCut)
-    const phiCut = Math.asin(CUT_Z / HAIR_R);   // ≈ 0.480 rad
-    const tStart = Math.PI - phiCut;             // ≈ 2.661 (links)
-    const tLen   = Math.PI + 2 * phiCut;         // ≈ 4.102 (235°, um Rückseite)
+    // ── Vorhang: Halbzylinder, nahtlos ab Kappenrand y=0 ───────────
+    // CylinderGeometry nutzt z = r·cos(θ) → cutTheta = arccos(CUT_Z/r)
+    // (Bugfix: vorher fälschlicherweise arcsin verwendet)
+    const tCut   = Math.acos(CUT_Z / HAIR_R);   // = cutTheta ≈ 1.091 rad
+    const tStart = tCut;                          // rechte Schnittkante (x>0, z=CUT_Z)
+    const tLen   = 2 * Math.PI - 2 * tCut;       // Bogen um Rückseite ≈ 4.101 rad (235°)
 
-    const CURTAIN_H = 0.32;   // reicht von y ≈ −0.15 bis y ≈ −0.47 (knapp über Hals)
+    const CURTAIN_H = 0.47;   // top=y=0 (Kappenrand), bottom=y=−0.47 (kurz über Hals)
     const curtainGeo = new THREE.CylinderGeometry(
-      HAIR_R,          // oben: gleicher Radius wie Kappe
-      HAIR_R * 0.92,   // unten: leicht verjüngt
+      HAIR_R,          // oben: gleicher Radius wie Kappe → nahtloser Übergang
+      HAIR_R * 0.82,   // unten: leicht verjüngt
       CURTAIN_H,
       18, 1,
-      true,            // offen (keine Deckel)
+      true,            // openEnded – keine Deckel
       tStart, tLen
     );
     const curtain = new THREE.Mesh(curtainGeo, mat);
-    curtain.position.y = -0.31;   // Mitte des Bogens
+    curtain.position.y = -(CURTAIN_H / 2);   // top=0, bottom=−CURTAIN_H
     curtain.castShadow = true;
     headGroup.add(curtain);
   }
