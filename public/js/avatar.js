@@ -177,9 +177,10 @@ function _faceMat(faceData) {
  * Fügt dem Kopf-Group eine geometrische Haar-Form hinzu.
  *
  * Kappe (kurz + lang):
- *   SphereGeometry mit HAIR_R, phi ∈ [π/2, π] (phiLength=π).
- *   Nach rotateX(π/2) gilt: new_y = −r·sin(θ)·cos(φ)
- *   → phi ∈ [π/2, 3π/2] liefert new_y ≥ 0 (obere Hälfte, Ohrhöhe = y=0).
+ *   SphereGeometry mit HAIR_R, phi ∈ [π, 2π] (phiStart=π, phiLength=π).
+ *   Three.js-Formel: x=−r·cos(φ)·sin(θ), z=r·sin(φ)·sin(θ).
+ *   Nach rotateX(π/2): new_y = −old_z = −r·sin(φ)·sin(θ).
+ *   Für new_y ≥ 0 (obere Hälfte, Ohrhöhe): sin(φ) ≤ 0 → φ ∈ [π, 2π]. ✓
  *   theta ∈ [cutTheta, π] schneidet vorne bei z = CUT_Z ab.
  *   Beide Schnittkanten fallen exakt auf die Gesichtsscheibenkante (x=±discR, y=0, z=CUT_Z).
  *
@@ -203,7 +204,7 @@ function _addHair(headGroup, style, colorHex) {
   const cutTheta = Math.acos(CUT_Z / HAIR_R);   // ≈ 1.091 rad
   const capGeo = new THREE.SphereGeometry(
     HAIR_R, 22, 16,
-    Math.PI / 2, Math.PI,        // phi: π/2 → 3π/2 (obere Hälfte nach Rotation)
+    Math.PI, Math.PI,             // phi: π → 2π → obere Hälfte (new_y≥0) nach rotateX
     cutTheta, Math.PI - cutTheta  // theta: Gesichtsschnitt → Hinterpol
   );
   capGeo.rotateX(Math.PI / 2);
