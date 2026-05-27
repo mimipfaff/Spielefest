@@ -76,6 +76,33 @@
         </div>
       </div>
 
+      <!-- ── Frisur ──────────────────────────────────────────── -->
+      <div class="skin-row">
+        <label class="tool-label skin-label">Frisur</label>
+        <div class="hair-style-row">
+          <button class="hair-btn active" data-hair="none">Kein Haar</button>
+          <button class="hair-btn"        data-hair="short">✂ Kurz</button>
+          <button class="hair-btn"        data-hair="long">💇 Lang</button>
+        </div>
+      </div>
+
+      <div class="skin-row" id="hairColorRow">
+        <label class="tool-label skin-label">
+          Haarfarbe
+          <input type="color" id="hairColorPicker" value="#1a0a05">
+        </label>
+        <div class="swatch-row">
+          <button class="swatch-btn active" data-hair-color="#1a0a05" style="background:#1a0a05" title="Schwarz"></button>
+          <button class="swatch-btn" data-hair-color="#4a2010" style="background:#4a2010" title="Dunkelbraun"></button>
+          <button class="swatch-btn" data-hair-color="#8b4513" style="background:#8b4513" title="Braun"></button>
+          <button class="swatch-btn" data-hair-color="#c8842a" style="background:#c8842a" title="Goldbraun"></button>
+          <button class="swatch-btn" data-hair-color="#f0d060" style="background:#f0d060" title="Blond"></button>
+          <button class="swatch-btn" data-hair-color="#cc3322" style="background:#cc3322" title="Rot"></button>
+          <button class="swatch-btn" data-hair-color="#888888" style="background:#888888" title="Grau"></button>
+          <button class="swatch-btn" data-hair-color="#eeeeee" style="background:#eeeeee" title="Weiß"></button>
+        </div>
+      </div>
+
       <input id="playerName" type="text" placeholder="Dein Name …"
              maxlength="15" autocomplete="off" spellcheck="false">
 

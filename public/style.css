@@ -212,6 +212,30 @@ input[type="range"] {
   transform: scale(1.12);
 }
 
+/* ── Hair Style Buttons ───────────────────────────────────── */
+.hair-style-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.hair-btn {
+  padding: 0.34rem 0.75rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.60);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.hair-btn:hover  { background: rgba(125,211,252,0.12); color: #f1f5f9; }
+.hair-btn.active {
+  background: rgba(125,211,252,0.22);
+  border-color: #7dd3fc;
+  color: #f1f5f9;
+}
+
 /* ── Name Input ───────────────────────────────────────────── */
 #playerName {
   display: block;

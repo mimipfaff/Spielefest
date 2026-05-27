@@ -46,9 +46,11 @@ let myPetId = null;
 
 // Spieler-Name (wird nach Login gesetzt, für Flappy-Chopper-Highscore gebraucht)
 let myPlayerName = '';
-// Eigene Shirt- und Hautfarbe (für Minime-Pet)
+// Eigene Shirt-, Haut- und Haarfarbe (für Minime-Pet und Avatar)
 let myShirtColor = '#5b9bd5';
 let mySkinColor  = '#ffce9e';
+let myHairStyle  = 'none';
+let myHairColor  = '#1a0a05';
 // Flappy-Chopper-Highscores (gecached für Panel-Anzeige)
 let currentFcHighscores = null;
 
@@ -452,13 +454,15 @@ function _showAbortedMsg(msg) {
 // ─────────────────────────────────────────────────────────────
 // Login
 // ─────────────────────────────────────────────────────────────
-setupLoginScreen(({ name, faceData, skinColor, shirtColor }) => {
+setupLoginScreen(({ name, faceData, skinColor, shirtColor, hairStyle, hairColor }) => {
   myPlayerName  = name || 'Spieler';
   myShirtColor  = shirtColor || '#5b9bd5';
   mySkinColor   = skinColor  || '#ffce9e';
+  myHairStyle   = hairStyle  || 'none';
+  myHairColor   = hairColor  || '#1a0a05';
 
   // Avatar
-  const parts  = createAvatarMesh(faceData, shirtColor, skinColor);
+  const parts  = createAvatarMesh(faceData, shirtColor, skinColor, myHairStyle, myHairColor);
   localFaceDisc = parts.faceDisc;
   localNameTag = createNameTag(name);
   localNameTag.position.y = 3.55;
@@ -470,7 +474,7 @@ setupLoginScreen(({ name, faceData, skinColor, shirtColor }) => {
   localPlayer = new LocalPlayer(parts);
 
   // Netzwerk
-  network.connect({ name, faceData, skinColor, shirtColor }, ({ spawnX, spawnZ }) => {
+  network.connect({ name, faceData, skinColor, shirtColor, hairStyle: myHairStyle, hairColor: myHairColor }, ({ spawnX, spawnZ }) => {
     localPlayer.setPosition(spawnX, 0, spawnZ);
   });
 

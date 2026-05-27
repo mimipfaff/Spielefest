@@ -20,7 +20,7 @@ const COL_SHOES = 0x2a1f14;   // fast schwarz (Schuhe)
  *
  * @returns {{ group, lArmPivot, rArmPivot, lLegPivot, rLegPivot, body, head }}
  */
-export function createAvatarMesh(faceData, bodyColor = 0x5b9bd5, skinColor = COL_SKIN) {
+export function createAvatarMesh(faceData, bodyColor = 0x5b9bd5, skinColor = COL_SKIN, hairStyle = 'none', hairColor = '#1a0a05') {
   const group = new THREE.Group();
 
   const skinM  = new THREE.MeshLambertMaterial({ color: skinColor });
@@ -58,6 +58,11 @@ export function createAvatarMesh(faceData, bodyColor = 0x5b9bd5, skinColor = COL
   const faceDisc = new THREE.Mesh(new THREE.CircleGeometry(discR, 40), faceMat);
   faceDisc.position.z = CUT_Z + 0.005;
   head.add(faceDisc);
+
+  // ── Haare (optional, auf den Kopf-Gruppen-Origin bezogen) ──
+  if (hairStyle && hairStyle !== 'none') {
+    _addHair(head, hairStyle, hairColor);
+  }
 
   // ── Hals (kleiner Zylinder zwischen Körper und Kopf) ────────
   const neck = new THREE.Mesh(
@@ -166,6 +171,38 @@ function _faceMat(faceData) {
   return new THREE.MeshBasicMaterial({ map: tex });
 }
 
+
+/**
+ * Fügt dem Kopf-Group eine Haar-Geometrie hinzu.
+ * Koordinaten sind im lokalen Raum der headGroup:
+ *   y=0  = Kopfmitte,  y=+HEAD_R = Scheitel
+ *   z=+CUT_Z ≈ +0.285 = Gesichtsscheibe (vorne)
+ *   z=-HEAD_R = Hinterkopf
+ *
+ * Haarsphäre: r=0.62, Mitte bei z=-0.21, scale_z=0.80
+ *   → Vorderkante bei -0.21 + 0.62×0.80 = +0.286 ≈ direkt hinter Gesichtsscheibe
+ */
+function _addHair(headGroup, style, colorHex) {
+  const mat = new THREE.MeshLambertMaterial({ color: colorHex });
+
+  // ── Kappe (kurz UND lang) ────────────────────────────────────
+  // Leicht gedrückte Kugel deckt Scheitel + Seiten ab
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 10), mat);
+  cap.position.set(0, 0.06, -0.21);
+  cap.scale.set(1.04, 0.92, 0.80);
+  cap.castShadow = true;
+  headGroup.add(cap);
+
+  if (style === 'long') {
+    // ── Vorhang (nur lang) ───────────────────────────────────
+    // Hohe Ellipse hängt von Kopfseite/-rücken bis Schulterniveau
+    const curtain = new THREE.Mesh(new THREE.SphereGeometry(0.62, 14, 10), mat);
+    curtain.position.set(0, -0.32, -0.21);
+    curtain.scale.set(1.00, 1.42, 0.80);
+    curtain.castShadow = true;
+    headGroup.add(curtain);
+  }
+}
 
 function _pill(ctx, x, y, w, h, r) {
   ctx.beginPath();

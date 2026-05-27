@@ -238,7 +238,10 @@ export class NetworkManager {
 
   // ── Intern ─────────────────────────────────────────────────
   _spawn(data) {
-    const parts = createAvatarMesh(data.faceData, data.shirtColor, data.skinColor);
+    const parts = createAvatarMesh(
+      data.faceData, data.shirtColor, data.skinColor,
+      data.hairStyle || 'none', data.hairColor || '#1a0a05'
+    );
     const group = parts.group;
     group.position.set(data.x || 0, data.y || 0, data.z || 0);
     group.rotation.y = data.rotY || 0;

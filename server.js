@@ -94,13 +94,14 @@ io.on('connection', (socket) => {
   console.log(`[+] ${socket.id}`);
 
   // ── join ────────────────────────────────────────────────
-  socket.on('join', ({ name, faceData, skinColor, shirtColor }) => {
+  socket.on('join', ({ name, faceData, skinColor, shirtColor, hairStyle, hairColor }) => {
     players[socket.id] = {
       id: socket.id,
       name: (name || 'Spieler').substring(0, 15),
       x: (Math.random() - 0.5) * 20, y: 0, z: (Math.random() - 0.5) * 20,
       rotY: 0, faceData: faceData || null, skinColor: skinColor || null,
-      shirtColor: shirtColor || null, petId: null
+      shirtColor: shirtColor || null, petId: null,
+      hairStyle: hairStyle || null, hairColor: hairColor || null
     };
     socket.emit('init', { selfId: socket.id, players, boothCounts: getBoothCounts(), petOwners });
     socket.broadcast.emit('playerJoined', players[socket.id]);

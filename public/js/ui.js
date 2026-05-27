@@ -68,6 +68,34 @@ export function setupFaceCanvas() {
   document.querySelectorAll('.swatch-btn[data-shirt]').forEach(btn =>
     btn.addEventListener('click', () => setShirt(btn.dataset.shirt)));
 
+  // ── Frisur ──────────────────────────────────────────────────
+  let hairStyle = 'none';
+  let hairColor = '#1a0a05';
+  const hairColorRow    = document.getElementById('hairColorRow');
+  const hairColorPicker = document.getElementById('hairColorPicker');
+
+  const setHairStyle = (style) => {
+    hairStyle = style;
+    document.querySelectorAll('.hair-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.hair === style));
+    if (hairColorRow) hairColorRow.style.display = style === 'none' ? 'none' : '';
+  };
+  document.querySelectorAll('.hair-btn').forEach(btn =>
+    btn.addEventListener('click', () => setHairStyle(btn.dataset.hair)));
+
+  const setHairColor = (hex) => {
+    hairColor = hex;
+    if (hairColorPicker) hairColorPicker.value = hex;
+    document.querySelectorAll('.swatch-btn[data-hair-color]').forEach(b =>
+      b.classList.toggle('active', b.dataset.hairColor === hex));
+  };
+  if (hairColorPicker) hairColorPicker.addEventListener('input', e => setHairColor(e.target.value));
+  document.querySelectorAll('.swatch-btn[data-hair-color]').forEach(btn =>
+    btn.addEventListener('click', () => setHairColor(btn.dataset.hairColor)));
+
+  // Haarfarb-Zeile zunächst verbergen (Standard: kein Haar)
+  if (hairColorRow) hairColorRow.style.display = 'none';
+
   // Koordinaten relativ zum Canvas (skaliert)
   const getPos = (e) => {
     const rect   = canvas.getBoundingClientRect();
@@ -167,7 +195,11 @@ export function setupFaceCanvas() {
     /** Gibt die gewaehlte Hautfarbe als Hex-String zurueck */
     getSkinColor:  () => skinColor,
     /** Gibt die gewaehlte T-Shirt-Farbe als Hex-String zurueck */
-    getShirtColor: () => shirtColor
+    getShirtColor: () => shirtColor,
+    /** Gibt den Frisur-Stil zurueck ('none' | 'short' | 'long') */
+    getHairStyle:  () => hairStyle,
+    /** Gibt die Haarfarbe als Hex-String zurueck */
+    getHairColor:  () => hairColor,
   };
 }
 
@@ -187,7 +219,9 @@ export function setupLoginScreen(onJoin) {
     const faceData   = faceCtrl.getDataURL();
     const skinColor  = faceCtrl.getSkinColor();
     const shirtColor = faceCtrl.getShirtColor();
-    onJoin({ name, faceData, skinColor, shirtColor });
+    const hairStyle  = faceCtrl.getHairStyle();
+    const hairColor  = faceCtrl.getHairColor();
+    onJoin({ name, faceData, skinColor, shirtColor, hairStyle, hairColor });
   };
 
   joinBtn.addEventListener('click', doJoin);
