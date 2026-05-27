@@ -1,0 +1,11 @@
+{
+  "name": "Spielefest",
+  "short_name": "Spielefest",
+  "description": "Kollaboratives 3D-Party-Spiel",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": []
+}

@@ -654,7 +654,17 @@ setupLoginScreen(({ name, faceData, skinColor, shirtColor }) => {
 
   // ── Vollbild-Button ─────────────────────────────────────────
   const btnFullscreen = document.getElementById('btnFullscreen');
-  btnFullscreen.classList.remove('hidden');
+
+  // iOS erkennen (Safari unterstützt requestFullscreen nicht)
+  const _isIOS        = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const _isStandalone = !!window.navigator.standalone;   // true wenn als PWA geöffnet
+
+  // Auf iOS im Standalone-Modus ist Vollbild bereits aktiv → Button verstecken
+  if (_isStandalone) {
+    btnFullscreen.classList.add('hidden');
+  } else {
+    btnFullscreen.classList.remove('hidden');
+  }
 
   function _requestFS() {
     const el = document.documentElement;
@@ -687,9 +697,58 @@ setupLoginScreen(({ name, faceData, skinColor, shirtColor }) => {
   document.addEventListener('fullscreenchange',       _onFSChange);
   document.addEventListener('webkitfullscreenchange', _onFSChange);
 
+  // Anleitung für iOS: "Zum Home-Bildschirm hinzufügen"
+  function _showIOSHint() {
+    document.getElementById('iosHint')?.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'iosHint';
+    overlay.style.cssText = [
+      'position:fixed;inset:0;background:rgba(0,0,0,0.72);',
+      'display:flex;align-items:flex-end;justify-content:center;',
+      'z-index:9999;padding:0 16px 40px;'
+    ].join('');
+
+    const box = document.createElement('div');
+    box.style.cssText = [
+      'background:#1e293b;border:1px solid rgba(255,255,255,0.15);',
+      'border-radius:20px;padding:22px 24px 18px;width:100%;max-width:340px;',
+      'text-align:center;color:#f1f5f9;font-family:system-ui,sans-serif;',
+      'box-shadow:0 -4px 40px rgba(0,0,0,0.5);'
+    ].join('');
+
+    box.innerHTML = `
+      <div style="font-size:30px;margin-bottom:10px;">📱</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:10px;">
+        Vollbild auf iPhone / iPad
+      </div>
+      <div style="font-size:14px;color:#94a3b8;line-height:1.6;margin-bottom:18px;">
+        Safari unterstützt kein direktes Vollbild.<br>
+        Tippe unten auf
+        <strong style="color:#38bdf8;">Teilen&nbsp;&#x2191;&#x25A1;</strong>
+        und dann auf<br>
+        <strong style="color:#38bdf8;">„Zum Home-Bildschirm"</strong>.<br>
+        Das Spiel startet dann im Querformat-Vollbild.
+      </div>
+      <button id="iosHintClose" style="
+        width:100%;padding:11px;border-radius:12px;border:none;
+        background:rgba(56,189,248,0.22);color:#7dd3fc;
+        font-size:15px;font-weight:700;cursor:pointer;
+      ">Verstanden</button>
+    `;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    document.getElementById('iosHintClose').addEventListener('click', () => overlay.remove());
+  }
+
   btnFullscreen.addEventListener('pointerdown', e => {
     e.preventDefault();
-    _isFS() ? _exitFS() : _requestFS();
+    if (_isIOS) {
+      _showIOSHint();
+    } else {
+      _isFS() ? _exitFS() : _requestFS();
+    }
   });
 });
 
