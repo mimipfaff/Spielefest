@@ -799,7 +799,7 @@ function animate(ts = 0) {
     const _obstacles = [];
     network.remotePlayers.forEach(p => { if (p.group) _obstacles.push(p.group.position); });
 
-    localPlayer.update(camCtrl, _obstacles, joyLeft);
+    localPlayer.update(camCtrl, _obstacles, joyLeft, dt);
     camCtrl.update(localPlayer.position, joyRight, zoomBtns, localPlayer.mesh.rotation.y);
 
     // ── Naehe zu Staenden pruefen ─────────────────────────

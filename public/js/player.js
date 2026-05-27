@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const MOVE_SPEED      = 0.15;   // Einheiten pro Frame
+const MOVE_SPEED      = 9.0;    // Einheiten pro Sekunde (= 0.15 × 60 fps, jetzt dt-basiert)
 const BOUNDARY_RADIUS = 34;     // Kreisförmige Weltgrenze: hinter dem Kiesweg-Ring (31–32.8), vor den Bergen (ab 38)
 const AVATAR_RADIUS   = 1.1;    // Mindest-Abstand zwischen Avatar-Mittelpunkten (Körper + Glied-Spielraum)
 
@@ -220,8 +220,9 @@ export class LocalPlayer {
    * @param cam – CameraController
    * @param {Array} obstacles – Positionen anderer Avatare
    * @param {import('./joystick.js').VirtualJoystick|null} joystickL – linker Joystick (Bewegung)
+   * @param {number} dt – Delta-Zeit in Sekunden (für framerate-unabhängige Bewegung)
    */
-  update(cam, obstacles = [], joystickL = null) {
+  update(cam, obstacles = [], joystickL = null, dt = 1 / 60) {
     const forward = cam.getForward();
     const right   = cam.getRight();
     const dir     = new THREE.Vector3();
@@ -246,10 +247,10 @@ export class LocalPlayer {
       dir.normalize();
       this._targetRotY = Math.atan2(dir.x, dir.z);
 
-      // Proportionale Geschwindigkeit bei reiner Joystick-Eingabe
+      // Proportionale Geschwindigkeit bei reiner Joystick-Eingabe (× dt = framerate-unabhängig)
       const speed = (joystickL?.active && !this._anyKeyActive())
-        ? MOVE_SPEED * Math.max(0.28, joyMag)
-        : MOVE_SPEED;
+        ? MOVE_SPEED * Math.max(0.28, joyMag) * dt
+        : MOVE_SPEED * dt;
       this.position.addScaledVector(dir, speed);
 
       // ── Kollision mit anderen Avataren – harte Grenze ──────
