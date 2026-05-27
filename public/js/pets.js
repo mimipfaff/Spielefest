@@ -28,9 +28,9 @@ export class PetManager {
     this.pets  = new Map();   // socketId → { petId, group, t }
   }
 
-  spawn(socketId, petId, startPos, shirtColor = '#5b9bd5', skinColor = '#ffce9e') {
+  spawn(socketId, petId, startPos, shirtColor = '#5b9bd5', skinColor = '#ffce9e', hairStyle = 'none', hairColor = '#1a0a05') {
     if (this.pets.has(socketId)) this.despawn(socketId);
-    const group = createPetMesh(petId, shirtColor, skinColor);
+    const group = createPetMesh(petId, shirtColor, skinColor, hairStyle, hairColor);
     if (!group) return;
     group.scale.setScalar(2);   // doppelte Größe
     if (startPos) group.position.set(startPos.x, startPos.y, startPos.z);
@@ -158,7 +158,7 @@ function _animatePet(pet) {
 // ─────────────────────────────────────────────────────────────
 // Dispatcher
 // ─────────────────────────────────────────────────────────────
-export function createPetMesh(petId, shirtColor = '#5b9bd5', skinColor = '#ffce9e') {
+export function createPetMesh(petId, shirtColor = '#5b9bd5', skinColor = '#ffce9e', hairStyle = 'none', hairColor = '#1a0a05') {
   switch (petId) {
     case 'wallace':   return _makeWallace();
     case 'bally':     return _makeBally();
@@ -169,7 +169,7 @@ export function createPetMesh(petId, shirtColor = '#5b9bd5', skinColor = '#ffce9
     case 'elli':      return _makeElli();
     case 'bello':     return _makeBello();
     case 'mathebuch': return _makeMathebuch();
-    case 'minime':    return _makeMinime(shirtColor, skinColor);
+    case 'minime':    return _makeMinime(shirtColor, skinColor, hairStyle, hairColor);
     default:          return null;
   }
 }
@@ -578,9 +578,9 @@ function _makeMathebuch() {
 // ─────────────────────────────────────────────────────────────
 // 10 – Minime (Mini-Avatar, trägt die T-Shirt-Farbe des Besitzers)
 // ─────────────────────────────────────────────────────────────
-function _makeMinime(shirtColor = '#5b9bd5', skinColor = '#ffce9e') {
+function _makeMinime(shirtColor = '#5b9bd5', skinColor = '#ffce9e', hairStyle = 'none', hairColor = '#1a0a05') {
   const g = new THREE.Group();
-  const parts = createAvatarMesh(null, shirtColor, skinColor);
+  const parts = createAvatarMesh(null, shirtColor, skinColor, hairStyle, hairColor);
   parts.group.scale.setScalar(0.22);
   g.add(parts.group);
   return g;

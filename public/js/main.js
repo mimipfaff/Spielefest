@@ -79,6 +79,7 @@ function _setJoyMode(mode) {
     joyLeftEl.querySelector('.joy-label').textContent  = '';
     joyRightEl.querySelector('.joy-label').textContent = '';
     zoomBtnsEl.classList.remove('hidden');
+    document.getElementById('btnCamCenter').classList.remove('hidden');
   } else if (mode === 'kickslap') {
     joyLeftEl.style.zIndex  = '200';
     joyRightEl.style.zIndex = '200';
@@ -503,18 +504,24 @@ setupLoginScreen(({ name, faceData, skinColor, shirtColor, hairStyle, hairColor 
     let spawnPos   = null;
     let shirtColor = '#5b9bd5';
     let skinColor  = '#ffce9e';
+    let hairStyle = 'none';
+    let hairColor = '#1a0a05';
     if (socketId === network.selfId) {
       spawnPos   = localPlayer?.position?.clone();
       myPetId    = petId;
       shirtColor = myShirtColor;
       skinColor  = mySkinColor;
+      hairStyle  = myHairStyle;
+      hairColor  = myHairColor;
     } else {
       const remote = network.remotePlayers.get(socketId);
       spawnPos   = remote?.group?.position?.clone();
       shirtColor = remote?.shirtColor || '#5b9bd5';
       skinColor  = remote?.skinColor  || '#ffce9e';
+      hairStyle  = remote?.hairStyle  || 'none';
+      hairColor  = remote?.hairColor  || '#1a0a05';
     }
-    petManager.spawn(socketId, petId, spawnPos, shirtColor, skinColor);
+    petManager.spawn(socketId, petId, spawnPos, shirtColor, skinColor, hairStyle, hairColor);
     // Pet-Panel aktualisieren wenn offen
     if (currentBoothId === 6) _renderPetPanel();
   };

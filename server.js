@@ -441,7 +441,8 @@ io.on('connection', (socket) => {
     list.splice(10); // nur Top 10 behalten
     _writeHighscores(list);
 
-    socket.emit('fc:highscore', list);
+    // Broadcast an alle → wer gerade am Flappy-Stand steht sieht die Liste sofort
+    io.emit('fc:highscore', list);
     console.log(`[Highscore] ${safeN}: ${safeS} Punkte (${list.length} Einträge gesamt)`);
   });
 
@@ -565,9 +566,10 @@ function _fpStartRound(game) {
   const allIds = _fpAllIds(game);
   _emit(allIds, 'fp:roundStart', {
     round: game.round, painter: game.painter, subject: game.subject,
-    painterName: players[game.painter]?.name || '?',
-    subjectName:  players[game.subject]?.name  || '?',
-    subjectFace:  players[game.subject]?.faceData || null,
+    painterName:      players[game.painter]?.name      || '?',
+    subjectName:      players[game.subject]?.name      || '?',
+    subjectFace:      players[game.subject]?.faceData  || null,
+    subjectSkinColor: players[game.subject]?.skinColor || '#ffce9e',
     timeMs: 30000
   });
   if (game._timer) clearTimeout(game._timer);

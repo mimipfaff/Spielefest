@@ -28,6 +28,7 @@ export class FacepaintGame {
     this.brush          = 16;
     this.tool           = 'pencil';
     this._lastPt        = null;
+    this.subjectSkinColor = '#ffce9e';   // Hautfarbe des Subjekts (für Radierer + Löschen)
 
     // Canvas-Referenzen
     this.drawCanvas = null;
@@ -149,7 +150,7 @@ export class FacepaintGame {
       colorIn, brushIn,
       makeBtn('✏️ Stift',    () => setTool('pencil'),  'fpBtnPencil'),
       makeBtn('⬜ Radierer', () => setTool('eraser'),  'fpBtnEraser'),
-      makeBtn('🗑 Löschen',  () => { this._fillCanvas(this.drawCtx); this._fillCanvas(this.viewCtx); })
+      makeBtn('🗑 Löschen',  () => { this._fillCanvas(this.drawCtx, this.subjectSkinColor); this._fillCanvas(this.viewCtx, this.subjectSkinColor); })
     );
     // Stift initial hervorheben
     requestAnimationFrame(() => setTool('pencil'));
@@ -251,7 +252,7 @@ export class FacepaintGame {
   }
 
   _stroke(from, to) {
-    const fill = this.tool === 'eraser' ? '#ffce9e' : this.color;
+    const fill = this.tool === 'eraser' ? this.subjectSkinColor : this.color;
     const r    = this.brush / 2;
     this._applyStroke(this.drawCtx, from, to, fill, r);
     this._applyStroke(this.viewCtx, from, to, fill, r);
@@ -285,12 +286,13 @@ export class FacepaintGame {
   // ── Socket ─────────────────────────────────────────────────
   _bindSocket() {
     this.socket.on('fp:roundStart', data => {
-      this.round     = data.round;
-      this.painter   = data.painter;
-      this.subject   = data.subject;
-      this.isPainter = data.painter === this.selfId;
-      this.isSubject = data.subject === this.selfId;
-      this.timerLeft = 30;
+      this.round            = data.round;
+      this.painter          = data.painter;
+      this.subject          = data.subject;
+      this.isPainter        = data.painter === this.selfId;
+      this.isSubject        = data.subject === this.selfId;
+      this.timerLeft        = 30;
+      this.subjectSkinColor = data.subjectSkinColor || '#ffce9e';
 
       // Gesicht des Subjekts als Startbild laden
       this._loadFaceToCanvas(this.drawCtx, data.subjectFace);

@@ -266,6 +266,8 @@ export class NetworkManager {
       rLegPivot:  parts.rLegPivot,
       shirtColor: data.shirtColor || '#5b9bd5',
       skinColor:  data.skinColor  || '#ffce9e',
+      hairStyle:  data.hairStyle  || 'none',
+      hairColor:  data.hairColor  || '#1a0a05',
       targetPos:  { x: data.x || 0, y: 0, z: data.z || 0 },
       targetRotY: data.rotY || 0,
       prevPos:    { x: data.x || 0, z: data.z || 0 }
