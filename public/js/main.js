@@ -475,8 +475,9 @@ setupLoginScreen(({ name, faceData, skinColor, shirtColor }) => {
   // Booth-Zaehler von anderen Spielern empfangen
   network.onBoothCounts = (counts) => {
     boothMgr.updateCounts(counts);
-    // Panel aktualisieren falls gerade am Stand
-    if (currentBoothId) {
+    // Panel aktualisieren falls gerade am Stand –
+    // Stand 6 (Pets), 7 (Flappy), 8 (Coming Soon) haben eigene Panels → überspringen
+    if (currentBoothId && currentBoothId < 6) {
       const booth = BOOTHS.find(b => b.id === currentBoothId);
       if (booth) showBoothPanel(booth, counts[currentBoothId] || 0);
     }
