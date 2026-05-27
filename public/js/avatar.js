@@ -174,40 +174,60 @@ function _faceMat(faceData) {
 
 
 /**
- * Fügt dem Kopf-Group eine Haar-Geometrie hinzu.
- * Koordinaten sind im lokalen Raum der headGroup:
- *   y=0  = Kopfmitte,  y=+HEAD_R = Scheitel
- *   z=+CUT_Z ≈ +0.285 = Gesichtsscheibe (vorne)
- *   z=-HEAD_R = Hinterkopf
+ * Fügt dem Kopf-Group eine geometrische Haar-Form hinzu.
  *
- * depthWrite:false → Haar schreibt nicht in den Tiefenpuffer.
- * Die Gesichtsscheibe (renderOrder=1) rendert danach in einen Puffer
- * ohne Haar-Tiefe → besteht Tiefentest und überdeckt das Haar korrekt.
+ * Kappe: Kugel mit HAIR_R, exakt bei z=CUT_Z vorne abgeschnitten —
+ *   dieselbe Schnitt-Technik wie die Kopfsphäre. Kein depthWrite-Trick nötig,
+ *   da die Geometrie geometrisch nie vor der Gesichtsscheibe liegt.
+ *   faceDisc.renderOrder=1 verhindert z-Fighting am Rand.
  *
- * Kappe: Mitte bei z=0, scale_z=0.80
- *   → Vorderkante bei +0.496 (geometrisch vor Scheibe), aber Scheibe überschreibt ✓
- *   → An Gesichtskante (x≈0.509): Haar z=+0.306 > Kopfsphäre z=0.278 → sichtbar ✓
- * Vorhang: Mitte bei z=-0.30
- *   → Auf Halshöhe (y=-0.58): Vorhang z=+0.174 < Hals-Vorderseite (≈0.21) → Hals vorne ✓
+ * Langer Vorhang: Halbzylinder (offener Bogen), dessen Öffnungs-Winkel
+ *   exakt bei z=CUT_Z endet — deckt nahtlos die gleiche Schnittlinie wie
+ *   die Kappe ab; Bogen läuft um die Rückseite bis kurz über den Hals.
  */
 function _addHair(headGroup, style, colorHex) {
-  // depthWrite:false → Haar schreibt keinen Tiefenwert, Gesichtsscheibe rendert korrekt drüber
-  const mat = new THREE.MeshLambertMaterial({ color: colorHex, depthWrite: false });
+  const HEAD_R = 0.58;
+  const HAIR_R = 0.607;   // knapp größer als HEAD_R → liegt auf dem Kopf auf
+  const CUT_Z  = 0.28;    // Gesichtsebene
 
-  // ── Kappe (kurz UND lang) ────────────────────────────────────
-  // Mitte bei z=0 → reicht geometrisch bis an Gesichtskante und darüber hinaus,
-  // wird aber im Gesichtsbereich von der Scheibe (renderOrder=1) überblendet.
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 10), mat);
-  cap.position.set(0, 0.06, 0);
-  cap.scale.set(1.05, 0.92, 0.80);
+  const mat = new THREE.MeshLambertMaterial({
+    color:    colorHex,
+    side:     THREE.DoubleSide   // Innen-Fläche sichtbar (offene Zylinderränder)
+  });
+
+  // ── Kappe (kurz + lang): Kugel wie Kopfsphäre, aber HAIR_R groß ──
+  // thetaStart = Polwinkel an z=CUT_Z, thetaLength = Rest bis Hinterpol
+  const capCutTheta = Math.acos(CUT_Z / HAIR_R);
+  const capGeo = new THREE.SphereGeometry(
+    HAIR_R, 22, 16,
+    0, Math.PI * 2,
+    capCutTheta, Math.PI - capCutTheta
+  );
+  capGeo.rotateX(Math.PI / 2);
+  const cap = new THREE.Mesh(capGeo, mat);
+  cap.castShadow = true;
   headGroup.add(cap);
 
   if (style === 'long') {
-    // ── Vorhang (nur lang) ───────────────────────────────────
-    // Mitte bei z=-0.30 → Vorhang-Vorderseite auf Halshöhe hinter dem Hals
-    const curtain = new THREE.Mesh(new THREE.SphereGeometry(0.62, 14, 10), mat);
-    curtain.position.set(0, -0.32, -0.30);
-    curtain.scale.set(1.00, 1.42, 0.80);
+    // ── Vorhang: Halbzylinder, Bogen endet bündig bei z=CUT_Z ──────
+    // phiCut = Zylinderwinkel, an dem z = CUT_Z gilt (z = r·sin φ)
+    // Bogen: linke Schnittkante (φ = π−phiCut) → Rückseite → rechte (φ = phiCut)
+    const phiCut = Math.asin(CUT_Z / HAIR_R);   // ≈ 0.480 rad
+    const tStart = Math.PI - phiCut;             // ≈ 2.661 (links)
+    const tLen   = Math.PI + 2 * phiCut;         // ≈ 4.102 (235°, um Rückseite)
+
+    const CURTAIN_H = 0.32;   // reicht von y ≈ −0.15 bis y ≈ −0.47 (knapp über Hals)
+    const curtainGeo = new THREE.CylinderGeometry(
+      HAIR_R,          // oben: gleicher Radius wie Kappe
+      HAIR_R * 0.92,   // unten: leicht verjüngt
+      CURTAIN_H,
+      18, 1,
+      true,            // offen (keine Deckel)
+      tStart, tLen
+    );
+    const curtain = new THREE.Mesh(curtainGeo, mat);
+    curtain.position.y = -0.31;   // Mitte des Bogens
+    curtain.castShadow = true;
     headGroup.add(curtain);
   }
 }
