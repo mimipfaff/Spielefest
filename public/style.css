@@ -258,9 +258,9 @@ input[type="range"] {
 /* ── HUD ──────────────────────────────────────────────────── */
 #hud {
   position: fixed;
-  top: 0.9rem;
-  left: 0.9rem;
-  right: 0.9rem;
+  top: calc(0.9rem + env(safe-area-inset-top, 0px));
+  left: calc(0.9rem + env(safe-area-inset-left, 0px));
+  right: calc(0.9rem + env(safe-area-inset-right, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -654,7 +654,7 @@ input[type="range"] {
 /* ── Virtual Joysticks ────────────────────────────────────── */
 .joy-base {
   position: fixed;
-  bottom: 28px;
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
   width: 124px;
   height: 124px;
   border-radius: 50%;
@@ -667,8 +667,8 @@ input[type="range"] {
   transition: background 0.15s, border-color 0.15s;
 }
 
-#joyLeft  { left:  20px; }
-#joyRight { right: 20px; }
+#joyLeft  { left:  calc(20px + env(safe-area-inset-left,  0px)); }
+#joyRight { right: calc(20px + env(safe-area-inset-right, 0px)); }
 
 .joy-base.joy-active {
   background: rgba(255, 255, 255, 0.13);
@@ -723,8 +723,8 @@ input[type="range"] {
 /* ── Zoom-Buttons (oberhalb des linken Joysticks) ─────────── */
 .zoom-btns {
   position: fixed;
-  left: 62px;      /* zentriert über joyLeft (Mitte bei left: 82px) */
-  bottom: 164px;   /* 12px Abstand über dem Joystick-Rand */
+  left: calc(62px + env(safe-area-inset-left, 0px));
+  bottom: calc(164px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -759,8 +759,8 @@ input[type="range"] {
 /* ── Vollbild-Button (oben rechts) ────────────────────────── */
 .fullscreen-btn {
   position: fixed;
-  top: 0.9rem;
-  right: 0.9rem;
+  top: calc(0.9rem + env(safe-area-inset-top, 0px));
+  right: calc(0.9rem + env(safe-area-inset-right, 0px));
   width: 36px;
   height: 36px;
   border-radius: 10px;
@@ -795,8 +795,8 @@ input[type="range"] {
 /* ── Kamera-Zentrieren-Button (oberhalb des rechten Joysticks) */
 .cam-center-btn {
   position: fixed;
-  right: 62px;     /* zentriert über joyRight (Mitte bei right: 82px) */
-  bottom: 164px;   /* 12px Abstand über dem Joystick-Rand */
+  right: calc(62px + env(safe-area-inset-right, 0px));
+  bottom: calc(164px + env(safe-area-inset-bottom, 0px));
   width:  44px;
   height: 44px;
   border-radius: 50%;
