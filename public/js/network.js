@@ -262,6 +262,7 @@ export class NetworkManager {
       lLegPivot:  parts.lLegPivot,
       rLegPivot:  parts.rLegPivot,
       shirtColor: data.shirtColor || '#5b9bd5',
+      skinColor:  data.skinColor  || '#ffce9e',
       targetPos:  { x: data.x || 0, y: 0, z: data.z || 0 },
       targetRotY: data.rotY || 0,
       prevPos:    { x: data.x || 0, z: data.z || 0 }

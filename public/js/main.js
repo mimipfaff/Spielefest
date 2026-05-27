@@ -46,8 +46,9 @@ let myPetId = null;
 
 // Spieler-Name (wird nach Login gesetzt, für Flappy-Chopper-Highscore gebraucht)
 let myPlayerName = '';
-// Eigene Shirt-Farbe (für Minime-Pet)
+// Eigene Shirt- und Hautfarbe (für Minime-Pet)
 let myShirtColor = '#5b9bd5';
+let mySkinColor  = '#ffce9e';
 // Flappy-Chopper-Highscores (gecached für Panel-Anzeige)
 let currentFcHighscores = null;
 
@@ -454,6 +455,7 @@ function _showAbortedMsg(msg) {
 setupLoginScreen(({ name, faceData, skinColor, shirtColor }) => {
   myPlayerName  = name || 'Spieler';
   myShirtColor  = shirtColor || '#5b9bd5';
+  mySkinColor   = skinColor  || '#ffce9e';
 
   // Avatar
   const parts  = createAvatarMesh(faceData, shirtColor, skinColor);
@@ -496,16 +498,19 @@ setupLoginScreen(({ name, faceData, skinColor, shirtColor }) => {
     // Startposition und Shirt-Farbe des Besitzers ermitteln
     let spawnPos   = null;
     let shirtColor = '#5b9bd5';
+    let skinColor  = '#ffce9e';
     if (socketId === network.selfId) {
       spawnPos   = localPlayer?.position?.clone();
       myPetId    = petId;
       shirtColor = myShirtColor;
+      skinColor  = mySkinColor;
     } else {
       const remote = network.remotePlayers.get(socketId);
       spawnPos   = remote?.group?.position?.clone();
       shirtColor = remote?.shirtColor || '#5b9bd5';
+      skinColor  = remote?.skinColor  || '#ffce9e';
     }
-    petManager.spawn(socketId, petId, spawnPos, shirtColor);
+    petManager.spawn(socketId, petId, spawnPos, shirtColor, skinColor);
     // Pet-Panel aktualisieren wenn offen
     if (currentBoothId === 6) _renderPetPanel();
   };
