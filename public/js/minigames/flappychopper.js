@@ -55,10 +55,11 @@ export class FlappyChopperGame {
     }));
 
     // Gebundene Event-Handler
-    this._onKey    = this._onKey.bind(this);
-    this._onClick  = this._onClick.bind(this);
-    this._loop     = this._loop.bind(this);
-    this._onHscore = this._onHscore.bind(this);
+    this._onKey     = this._onKey.bind(this);
+    this._onClick   = this._onClick.bind(this);
+    this._onTouch   = e => { e.preventDefault(); this._handleInput(); };
+    this._loop      = this._loop.bind(this);
+    this._onHscore  = this._onHscore.bind(this);
   }
 
   // ── Lifecycle ────────────────────────────────────────────────
@@ -82,10 +83,10 @@ export class FlappyChopperGame {
     this._overlay.appendChild(canvas);
 
     window.addEventListener('keydown', this._onKey, { passive: false });
-    canvas.addEventListener('click',      this._onClick);
-    // Touch-Tap auf Canvas = Fliegen (ohne auf Klick-Synthese warten)
-    canvas.addEventListener('touchstart', e => { e.preventDefault(); this._handleInput(); },
-      { passive: false });
+    // Klick und Touch auf gesamtem Overlay – nicht nur auf dem Canvas –
+    // damit der schwarze Rand um das Spielfeld ebenfalls reagiert
+    this._overlay.addEventListener('click',      this._onClick);
+    this._overlay.addEventListener('touchstart', this._onTouch, { passive: false });
     this.socket.on('fc:highscore', this._onHscore);
 
     this._lastTs = performance.now();
