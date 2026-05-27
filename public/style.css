@@ -8,6 +8,24 @@ body {
   overflow: hidden;
   width: 100vw;
   height: 100vh;
+  /* iOS: langes Drücken soll nichts markieren / kein Kontextmenü zeigen */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Canvas und Bilder: kein Drag, kein Kontextmenü */
+canvas, img {
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+/* Eingabefelder: Selektion wieder erlauben */
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 
 /* ── Game Canvas ──────────────────────────────────────────── */
