@@ -1,5 +1,6 @@
 // ─────────────────────────────────────────────────────────────
-// Virtueller Joystick – Touchscreen-Steuerung
+// Virtueller Joystick – Pointer Events (Maus · Touch · Stift)
+// Funktioniert auf Touchscreen-Laptops, Tablets und Handys.
 // ─────────────────────────────────────────────────────────────
 export class VirtualJoystick {
   /**
@@ -15,7 +16,7 @@ export class VirtualJoystick {
     /** Betrag der Auslenkung 0 … 1 */
     this.mag = 0;
 
-    this._tid    = null;   // aktive Touch-ID
+    this._pid    = null;   // aktive Pointer-ID
     this._startX = 0;
     this._startY = 0;
     this._curX   = 0;
@@ -31,65 +32,60 @@ export class VirtualJoystick {
     this._bindEvents();
   }
 
-  /** true wenn gerade ein Finger auf dem Joystick liegt */
-  get active() { return this._tid !== null; }
+  /** true wenn gerade ein Finger / Pointer auf dem Joystick liegt */
+  get active() { return this._pid !== null; }
 
-  // ── Event-Binding ─────────────────────────────────────────
+  // ── Event-Binding (Pointer Events – funktioniert auf allen Eingabegeräten) ──
   _bindEvents() {
-    // Joystick-Element: Touch starten
-    this.el.addEventListener('touchstart', e => {
-      if (this._tid !== null) return;    // zweiten Finger ignorieren
-      e.preventDefault();                // Browser-Scroll / Tap-Highlight verhindern
-      const t = e.changedTouches[0];
-      this._tid    = t.identifier;
-      this._startX = this._curX = t.clientX;
-      this._startY = this._curY = t.clientY;
-      this._update(t);
-    }, { passive: false });
+    // Pointer-Down: Eingabe starten und an dieses Element binden
+    this.el.addEventListener('pointerdown', e => {
+      if (this._pid !== null) return;      // zweiten Finger ignorieren
+      e.preventDefault();
+      this.el.setPointerCapture(e.pointerId); // Bewegung außerhalb des Elements verfolgen
+      this._pid    = e.pointerId;
+      this._startX = this._curX = e.clientX;
+      this._startY = this._curY = e.clientY;
+      this._update(e.clientX, e.clientY);
+    });
 
-    // Dokument: Fingerbewegung verfolgen (auch außerhalb des Elements)
-    document.addEventListener('touchmove', e => {
-      for (const t of e.changedTouches) {
-        if (t.identifier === this._tid) {
-          this._curX = t.clientX;
-          this._curY = t.clientY;
-          this._update(t);
-        }
-      }
-    }, { passive: true });
+    // Pointer-Move: Knob-Position aktualisieren
+    this.el.addEventListener('pointermove', e => {
+      if (e.pointerId !== this._pid) return;
+      this._curX = e.clientX;
+      this._curY = e.clientY;
+      this._update(e.clientX, e.clientY);
+    });
 
-    // Finger heben (touchend + touchcancel)
+    // Pointer-Up / Cancel: Joystick zurücksetzen
     const onEnd = e => {
-      for (const t of e.changedTouches) {
-        if (t.identifier !== this._tid) continue;
+      if (e.pointerId !== this._pid) return;
 
-        // Tap erkennen: kaum Bewegung → Angriff auslösen
-        const disp = Math.hypot(
-          this._curX - this._startX,
-          this._curY - this._startY
-        );
-        if (disp < 12 && this.onTap) this.onTap();
+      // Tap erkennen: kaum Bewegung → Angriff / Aktion auslösen
+      const disp = Math.hypot(
+        this._curX - this._startX,
+        this._curY - this._startY
+      );
+      if (disp < 12 && this.onTap) this.onTap();
 
-        // Joystick zurücksetzen
-        this._tid = null;
-        this.dx = this.dy = this.mag = 0;
-        this.knob.style.transform = 'translate(-50%, -50%)';
-        this.el.classList.remove('joy-active');
-      }
+      // Joystick zurücksetzen
+      this._pid = null;
+      this.dx = this.dy = this.mag = 0;
+      this.knob.style.transform = 'translate(-50%, -50%)';
+      this.el.classList.remove('joy-active');
     };
-    document.addEventListener('touchend',    onEnd);
-    document.addEventListener('touchcancel', onEnd);
+    this.el.addEventListener('pointerup',     onEnd);
+    this.el.addEventListener('pointercancel', onEnd);
   }
 
   // ── Knob-Position berechnen ────────────────────────────────
-  _update(touch) {
+  _update(clientX, clientY) {
     const rect = this.el.getBoundingClientRect();
     const cx   = rect.left + rect.width  / 2;
     const cy   = rect.top  + rect.height / 2;
     const maxR = rect.width / 2 * 0.65;   // 65 % des Basis-Radius als Max-Weg
 
-    let dx = touch.clientX - cx;
-    let dy = touch.clientY - cy;
+    let dx = clientX - cx;
+    let dy = clientY - cy;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     // Knob auf Kreisbereich begrenzen
@@ -121,14 +117,10 @@ export class ZoomButtons {
     this.delta = 0;
 
     for (const [el, d] of [[inEl, -1], [outEl, 1]]) {
-      el.addEventListener('touchstart', e => {
-        e.preventDefault();
-        this.delta = d;
-      }, { passive: false });
-      el.addEventListener('touchend',   () => { this.delta = 0; });
-      el.addEventListener('mousedown',  () => { this.delta = d; });
-      el.addEventListener('mouseup',    () => { this.delta = 0; });
-      el.addEventListener('mouseleave', () => { this.delta = 0; });
+      el.addEventListener('pointerdown',   e => { e.preventDefault(); this.delta = d; });
+      el.addEventListener('pointerup',     () => { this.delta = 0; });
+      el.addEventListener('pointercancel', () => { this.delta = 0; });
+      el.addEventListener('pointerleave',  () => { this.delta = 0; });
     }
   }
 }

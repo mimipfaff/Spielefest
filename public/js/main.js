@@ -645,6 +645,46 @@ setupLoginScreen(({ name, faceData, skinColor, shirtColor }) => {
       btnCamCenter.classList.remove('active');
     };
   }
+
+  // ── Vollbild-Button ─────────────────────────────────────────
+  const btnFullscreen = document.getElementById('btnFullscreen');
+  btnFullscreen.classList.remove('hidden');
+
+  function _requestFS() {
+    const el = document.documentElement;
+    if      (el.requestFullscreen)           el.requestFullscreen().catch(() => {});
+    else if (el.webkitRequestFullscreen)     el.webkitRequestFullscreen();
+  }
+  function _exitFS() {
+    if      (document.exitFullscreen)        document.exitFullscreen().catch(() => {});
+    else if (document.webkitExitFullscreen)  document.webkitExitFullscreen();
+  }
+  function _lockLandscape() {
+    try {
+      if (screen.orientation && screen.orientation.lock)
+        screen.orientation.lock('landscape').catch(() => {});
+    } catch (_) {}
+  }
+  function _isFS() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+  function _onFSChange() {
+    if (_isFS()) {
+      btnFullscreen.classList.add('fs-active');
+      btnFullscreen.title = 'Vollbild beenden';
+      _lockLandscape();
+    } else {
+      btnFullscreen.classList.remove('fs-active');
+      btnFullscreen.title = 'Vollbild (Querformat)';
+    }
+  }
+  document.addEventListener('fullscreenchange',       _onFSChange);
+  document.addEventListener('webkitfullscreenchange', _onFSChange);
+
+  btnFullscreen.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    _isFS() ? _exitFS() : _requestFS();
+  });
 });
 
 // ─────────────────────────────────────────────────────────────
