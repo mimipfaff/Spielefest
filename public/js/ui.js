@@ -18,22 +18,35 @@ export function setupFaceCanvas() {
   let lastX     = null;   // letzter Pinselkontaktpunkt (für durchgezogene Linien)
   let lastY     = null;
 
-  // Canvas auf aktuelle Hautfarbe zuruecksetzen
-  const clearToSkin = () => {
+  // Off-Screen-Buffer: hält nur die Pinselstriche (transparenter Hintergrund)
+  const buf    = document.createElement('canvas');
+  buf.width    = canvas.width;
+  buf.height   = canvas.height;
+  const bufCtx = buf.getContext('2d');
+
+  // Sichtbaren Canvas neu zusammensetzen: Hautfarbe als Hintergrund + Striche drüber
+  const render = () => {
     ctx.fillStyle = skinColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(buf, 0, 0);
+  };
+  render();
+
+  // Nur die Zeichnung löschen (Hintergrundfarbe bleibt)
+  const clearToSkin = () => {
+    bufCtx.clearRect(0, 0, buf.width, buf.height);
+    render();
     hint.classList.remove('gone');
     hasDrawn = false;
   };
-  clearToSkin();
 
-  // Hautfarbe aendern: Canvas sofort leeren und neu einfaerben
+  // Hautfarbe wechseln – Zeichnung bleibt erhalten
   const setSkin = (hex) => {
     skinColor = hex;
     if (skinPicker) skinPicker.value = hex;
     document.querySelectorAll('.swatch-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.color === hex));
-    clearToSkin();
+    render();   // Hintergrund tauschen, Buffer unverändert
   };
 
   if (skinPicker) {
@@ -67,31 +80,38 @@ export function setupFaceCanvas() {
     };
   };
 
+  // Hilfsfunktion: Punkt/Linie auf einen Canvas-Kontext zeichnen
+  const _applyStroke = (c, x, y, col) => {
+    c.lineCap    = 'round';
+    c.lineJoin   = 'round';
+    c.lineWidth  = size;
+    c.strokeStyle = col;
+    c.fillStyle   = col;
+    if (lastX === null) {
+      c.beginPath(); c.arc(x, y, size / 2, 0, Math.PI * 2); c.fill();
+    } else {
+      c.beginPath(); c.moveTo(lastX, lastY); c.lineTo(x, y); c.stroke();
+    }
+  };
+
   // Linie zeichnen – verbindet letzten mit aktuellem Punkt (smooth)
   const paint = (e) => {
     if (!drawing) return;
     if (e.cancelable) e.preventDefault();
     const { x, y } = getPos(e);
-    const paintColor = tool === 'eraser' ? skinColor : color;
 
-    ctx.lineCap   = 'round';
-    ctx.lineJoin  = 'round';
-    ctx.lineWidth = size;
-    ctx.strokeStyle = paintColor;
-    ctx.fillStyle   = paintColor;
-
-    if (lastX === null) {
-      // Erster Kontaktpunkt: einzelner Kreis
-      ctx.beginPath();
-      ctx.arc(x, y, size / 2, 0, Math.PI * 2);
-      ctx.fill();
+    if (tool === 'eraser') {
+      // Radierer: Striche aus dem Buffer löschen → Hautfarbe scheint durch
+      bufCtx.save();
+      bufCtx.globalCompositeOperation = 'destination-out';
+      _applyStroke(bufCtx, x, y, 'rgba(0,0,0,1)');
+      bufCtx.restore();
     } else {
-      // Durchgezogene Linie vom letzten zum aktuellen Punkt
-      ctx.beginPath();
-      ctx.moveTo(lastX, lastY);
-      ctx.lineTo(x, y);
-      ctx.stroke();
+      // Stift: Strich in den Buffer malen
+      _applyStroke(bufCtx, x, y, color);
     }
+
+    render();   // Sichtbaren Canvas aktualisieren
 
     lastX = x;
     lastY = y;
