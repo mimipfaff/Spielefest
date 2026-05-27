@@ -678,6 +678,7 @@ export class KickSlapGame {
 
   // ── Sieg-Bildschirm ────────────────────────────────────────
   _showEnd({ winnerId, rankings }) {
+    if (this._stopped) return;   // Spiel wurde manuell beendet – kein Sieg-Screen
     if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; }
 
     const ov = document.getElementById('minigameOverlay');

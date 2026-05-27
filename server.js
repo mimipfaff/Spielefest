@@ -64,7 +64,18 @@ function _emit(ids, event, data) {
 // ─────────────────────────────────────────────────────────────
 function getBoothCounts() {
   const c = {};
-  for (let i = 1; i <= BOOTH_COUNT; i++) c[i] = boothPlayers[i].size;
+  for (let i = 1; i <= BOOTH_COUNT; i++) {
+    c[i] = boothPlayers[i].size;
+    // Spieler in laufendem Spiel mitzählen (damit der Stand nicht leer wirkt)
+    const ag = activeGames[i];
+    if (ag && ag.active) {
+      if (ag.type === 'kickslap') {
+        c[i] += Object.values(ag.players).filter(p => !p.eliminated).length;
+      } else if (Array.isArray(ag.players)) {
+        c[i] += ag.players.length;
+      }
+    }
+  }
   return c;
 }
 function removeFromBooth(sid) {
@@ -204,7 +215,7 @@ io.on('connection', (socket) => {
   // ════════════════════════════════════════════════════════
   socket.on('ks:move', ({ x, y }) => {
     const game = _ksGameOf(socket.id);
-    if (!game) return;
+    if (!game || !game.active) return;
     const p = game.players[socket.id];
     if (!p || p.eliminated) return;
     if (Math.hypot(x - 5, y - 5) > 4.6) return;   // reject cheating positions
@@ -503,13 +514,16 @@ function _ksCheckWinner(game) {
   if (alive.length > 1) return;
   game.active = false;
   const winner = alive[0] || null;
-  _emit(_ksAllIds(game), 'ks:end', {
-    winnerId: winner?.id || null,
-    rankings: Object.values(game.players)
-      .sort((a, b) => (a.eliminated ? 1 : 0) - (b.eliminated ? 1 : 0))
-      .map(p => ({ id: p.id, name: players[p.id]?.name || '?' }))
-  });
-  setTimeout(() => { delete activeGames[game.boothId]; }, 10000);
+  // Kurze Verzögerung: Ausscheidungs-Animation soll sichtbar sein, bevor der Sieg-Screen erscheint
+  setTimeout(() => {
+    _emit(_ksAllIds(game), 'ks:end', {
+      winnerId: winner?.id || null,
+      rankings: Object.values(game.players)
+        .sort((a, b) => (a.eliminated ? 1 : 0) - (b.eliminated ? 1 : 0))
+        .map(p => ({ id: p.id, name: players[p.id]?.name || '?' }))
+    });
+    setTimeout(() => { delete activeGames[game.boothId]; }, 10000);
+  }, 800);
 }
 
 // ═══════════════════════════════════════════════════════════════
