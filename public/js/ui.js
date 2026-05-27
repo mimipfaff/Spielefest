@@ -182,7 +182,7 @@ export function setupLoginScreen(onJoin) {
 export function showGame() {
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
-  document.getElementById('createBtn').classList.remove('hidden');
+  document.getElementById('createBtn')?.classList.remove('hidden');  // optional: Element existiert nur falls vorhanden
 }
 
 // ─────────────────────────────────────────────────────────────
