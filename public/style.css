@@ -1,0 +1,798 @@
+/* ── Reset ────────────────────────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0f172a;
+  color: #f1f5f9;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* ── Game Canvas ──────────────────────────────────────────── */
+#gameCanvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── Login Screen ─────────────────────────────────────────── */
+#loginScreen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f3460 100%);
+  z-index: 200;
+}
+
+.login-box {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  padding: 2rem 2rem 1.5rem;
+  width: min(480px, 94vw);
+  backdrop-filter: blur(12px);
+  text-align: center;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+
+.login-box h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(90deg, #7dd3fc, #a5f3d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.25rem;
+}
+
+.subtitle {
+  color: rgba(255,255,255,0.45);
+  font-size: 0.88rem;
+  margin-bottom: 1.5rem;
+}
+
+/* ── Face Section ─────────────────────────────────────────── */
+.face-section {
+  display: flex;
+  gap: 1.2rem;
+  align-items: flex-start;
+  justify-content: center;
+  margin-bottom: 1.4rem;
+}
+
+.canvas-wrap {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.18);
+  cursor: crosshair;
+  flex-shrink: 0;
+}
+
+#faceCanvas {
+  display: block;
+  width: 180px;
+  height: 180px;
+  background: #fff;
+}
+
+.draw-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0,0,0,0.25);
+  font-size: 0.8rem;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.draw-hint.gone { opacity: 0; }
+
+/* ── Draw Tools ───────────────────────────────────────────── */
+.draw-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  align-items: flex-start;
+  padding-top: 0.4rem;
+}
+
+.tool-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.6);
+  width: 100%;
+}
+
+input[type="color"] {
+  width: 52px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 2px;
+  background: rgba(255,255,255,0.1);
+}
+
+input[type="range"] {
+  width: 130px;
+  accent-color: #7dd3fc;
+  cursor: pointer;
+}
+
+.tool-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tool-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 10px;
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #f1f5f9;
+  transition: background 0.15s, border-color 0.15s;
+}
+.tool-btn:hover  { background: rgba(125,211,252,0.15); }
+.tool-btn.active {
+  background: rgba(125,211,252,0.22);
+  border-color: #7dd3fc;
+}
+
+/* ── Skin Color ───────────────────────────────────────────── */
+.skin-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.skin-label {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.swatch-row {
+  display: flex;
+  gap: 0.42rem;
+  flex-wrap: wrap;
+}
+
+.swatch-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+.swatch-btn:hover {
+  transform: scale(1.18);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.35);
+}
+.swatch-btn.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.6);
+  transform: scale(1.12);
+}
+
+/* ── Name Input ───────────────────────────────────────────── */
+#playerName {
+  display: block;
+  width: 100%;
+  padding: 0.72rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.07);
+  color: #f1f5f9;
+  font-size: 1rem;
+  text-align: center;
+  outline: none;
+  margin-bottom: 0.85rem;
+  transition: border-color 0.2s;
+}
+#playerName:focus { border-color: #7dd3fc; }
+#playerName::placeholder { color: rgba(255,255,255,0.28); }
+
+/* ── Join Button ──────────────────────────────────────────── */
+#joinBtn {
+  width: 100%;
+  padding: 0.82rem;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(135deg, #38bdf8, #2563eb);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 0.9rem;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 18px rgba(56,189,248,0.3);
+}
+#joinBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(56,189,248,0.45);
+}
+
+.controls-hint {
+  font-size: 0.73rem;
+  color: rgba(255,255,255,0.25);
+}
+
+/* ── HUD ──────────────────────────────────────────────────── */
+#hud {
+  position: fixed;
+  top: 0.9rem;
+  left: 0.9rem;
+  right: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#playerCount {
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(6px);
+  border-radius: 10px;
+  padding: 0.38rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+#hudRight {
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(6px);
+  border-radius: 10px;
+  padding: 0.38rem 0.9rem;
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.65);
+}
+
+.hud-key {
+  background: rgba(255,255,255,0.12);
+  border-radius: 5px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.72rem;
+  color: #fff;
+}
+
+/* ── Create Button ────────────────────────────────────────── */
+#createBtn {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.78rem 2rem;
+  border-radius: 50px;
+  border: none;
+  background: linear-gradient(135deg, #ec4899, #f43f5e);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 4px 20px rgba(236,72,153,0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+#createBtn:hover {
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 6px 28px rgba(236,72,153,0.55);
+}
+
+/* ── Stand-Panel ─────────────────────────────────────────────*/
+#boothPanel {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 18px;
+  padding: 1.1rem 1.6rem 1rem;
+  min-width: 280px;
+  text-align: center;
+  z-index: 20;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.bp-name {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #f1f5f9;
+  margin-bottom: 0.6rem;
+  letter-spacing: -0.01em;
+}
+
+.bp-players {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.bp-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.bp-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: #38bdf8;
+  transition: width 0.4s ease, background 0.4s ease;
+  width: 0%;
+}
+
+#bpPlayerText {
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+.bp-start {
+  width: 100%;
+  padding: 0.65rem;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #4ade80, #16a34a);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 14px rgba(74,222,128,0.35);
+  transition: transform 0.15s, box-shadow 0.15s;
+  margin-bottom: 0.1rem;
+}
+.bp-start:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 18px rgba(74,222,128,0.5);
+}
+
+.bp-wait {
+  font-size: 0.78rem;
+  color: #475569;
+  margin-top: 0.2rem;
+}
+
+/* ── Placement Hint (veraltet, bleibt als Fallback) ──────────*/
+#placementHint {
+  position: fixed;
+  bottom: 5.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(6px);
+  border-radius: 50px;
+  padding: 0.6rem 1.4rem;
+  font-size: 0.88rem;
+  color: #fff;
+  z-index: 10;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#placementHint kbd {
+  background: rgba(255,255,255,0.15);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+
+/* ── Editor Overlay ──────────────────────────────────────────*/
+#editorOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 150;
+  padding: 1rem;
+}
+
+.editor-box {
+  background: #1e293b;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  width: min(900px, 98vw);
+  max-height: 95vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.4rem 0.8rem;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.editor-header h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.icon-btn {
+  background: rgba(255,255,255,0.08);
+  border: none;
+  border-radius: 8px;
+  color: #94a3b8;
+  width: 32px;
+  height: 32px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.icon-btn:hover { background: rgba(255,255,255,0.16); color: #fff; }
+
+/* ── Editor Body ─────────────────────────────────────────────*/
+.editor-body {
+  display: flex;
+  gap: 1.2rem;
+  padding: 1.2rem 1.4rem;
+  flex: 1;
+}
+
+/* Linke Spalte */
+.editor-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 200px;
+}
+
+.size-block h3,
+.preview-block h3,
+.editor-right h3 {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  margin-bottom: 0.6rem;
+}
+
+.size-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: #cbd5e1;
+  margin-bottom: 0.45rem;
+  cursor: default;
+}
+.size-row span { width: 40px; }
+.size-row input[type="range"] {
+  flex: 1;
+  accent-color: #38bdf8;
+  cursor: pointer;
+}
+.size-row b { width: 30px; font-size: 0.8rem; color: #7dd3fc; }
+
+#previewCanvas {
+  display: block;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+/* Rechte Spalte */
+.editor-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+/* Aufgeklappter Wuerfel */
+.face-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 72px);
+  grid-template-rows: repeat(3, 72px);
+  gap: 4px;
+}
+
+.face-cell:nth-child(1) { grid-column: 2; grid-row: 1; } /* top    */
+.face-cell:nth-child(2) { grid-column: 1; grid-row: 2; } /* left   */
+.face-cell:nth-child(3) { grid-column: 2; grid-row: 2; } /* front  */
+.face-cell:nth-child(4) { grid-column: 3; grid-row: 2; } /* right  */
+.face-cell:nth-child(5) { grid-column: 4; grid-row: 2; } /* back   */
+.face-cell:nth-child(6) { grid-column: 2; grid-row: 3; } /* bottom */
+
+.face-cell {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: border-color 0.15s;
+}
+.face-cell:hover { border-color: rgba(125,211,252,0.5); }
+.face-cell.active { border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56,189,248,0.25); }
+.face-cell canvas { display: block; width: 64px; height: 56px; background: #fff; }
+.face-cell span {
+  font-size: 0.6rem;
+  color: #94a3b8;
+  padding: 2px 0;
+  background: rgba(30,41,59,0.9);
+  width: 100%;
+  text-align: center;
+}
+.face-cell.active span { color: #7dd3fc; }
+
+/* Zeichenbereich */
+.draw-block { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; }
+
+.draw-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+#edFaceLabel {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #7dd3fc;
+}
+
+.draw-tools-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.draw-tools-row input[type="color"] {
+  width: 36px; height: 30px;
+  border: none; border-radius: 6px;
+  background: rgba(255,255,255,0.1);
+  cursor: pointer; padding: 2px;
+}
+.draw-tools-row input[type="range"] {
+  width: 80px;
+  accent-color: #38bdf8;
+  cursor: pointer;
+}
+
+#edDrawCanvas {
+  display: block;
+  background: #fff;
+  border-radius: 12px;
+  cursor: crosshair;
+  width: 256px;
+  height: 256px;
+  border: 2px solid rgba(255,255,255,0.12);
+  transition: border-color 0.15s;
+}
+#edDrawCanvas:hover { border-color: rgba(56,189,248,0.4); }
+
+/* ── Editor Footer ───────────────────────────────────────────*/
+.editor-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.4rem;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.btn-primary {
+  padding: 0.65rem 1.4rem;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #38bdf8, #2563eb);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 3px 14px rgba(56,189,248,0.3);
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 20px rgba(56,189,248,0.45);
+}
+
+.btn-secondary {
+  padding: 0.65rem 1.2rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.07); color: #fff; }
+
+/* ── Virtual Joysticks ────────────────────────────────────── */
+.joy-base {
+  position: fixed;
+  bottom: 28px;
+  width: 124px;
+  height: 124px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  z-index: 30;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+#joyLeft  { left:  20px; }
+#joyRight { right: 20px; }
+
+.joy-base.joy-active {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.38);
+}
+
+.joy-knob {
+  position: absolute;
+  top:  50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width:  52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  border: 2px solid rgba(255, 255, 255, 0.48);
+  pointer-events: none;
+}
+
+.joy-label {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.50);
+  white-space: nowrap;
+  pointer-events: none;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+/* KickSlap-Modus: Joystick-Kreise als Angriffs-Buttons */
+.joy-base.joy-ks-mode {
+  background: rgba(255, 110, 0, 0.18);
+  border-color: rgba(255, 165, 45, 0.55);
+}
+.joy-base.joy-ks-mode.joy-active {
+  background: rgba(255, 140, 0, 0.32);
+  border-color: rgba(255, 180, 70, 0.80);
+}
+.joy-base.joy-ks-mode .joy-knob {
+  background: rgba(255, 145, 40, 0.30);
+  border-color: rgba(255, 175, 75, 0.65);
+}
+.joy-base.joy-ks-mode .joy-label {
+  color: rgba(255, 205, 100, 0.92);
+  font-size: 13px;
+}
+
+/* ── Zoom-Buttons (oberhalb des linken Joysticks) ─────────── */
+.zoom-btns {
+  position: fixed;
+  left: 62px;      /* zentriert über joyLeft (Mitte bei left: 82px) */
+  bottom: 164px;   /* 12px Abstand über dem Joystick-Rand */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 30;
+  pointer-events: auto;
+}
+
+.zoom-btn {
+  width:  36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: background 0.12s, color 0.12s;
+}
+.zoom-btn:active {
+  background: rgba(255, 255, 255, 0.20);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ── Kamera-Zentrieren-Button (oberhalb des rechten Joysticks) */
+.cam-center-btn {
+  position: fixed;
+  right: 62px;     /* zentriert über joyRight (Mitte bei right: 82px) */
+  bottom: 164px;   /* 12px Abstand über dem Joystick-Rand */
+  width:  40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 31;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.cam-center-btn.active {
+  background: rgba(56, 189, 248, 0.28);
+  border-color: rgba(56, 189, 248, 0.72);
+  color: #7dd3fc;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+}
+
+/* ── Panels über Joysticks anheben (immer, wenn Sticks sichtbar) */
+body.touch-mode #boothPanel,
+body.touch-mode #petPanel,
+body.touch-mode #flappyPanel,
+body.touch-mode #comingSoonPanel {
+  bottom: 172px;
+}
+
+/* ── Login-Screen auf kleinen Bildschirmen ────────────────── */
+@media (max-width: 500px) {
+  .face-section {
+    flex-direction: column;
+    align-items: center;
+  }
+  .draw-tools {
+    width: 100%;
+    align-items: center;
+  }
+  input[type="range"] { width: 180px; }
+  .login-box {
+    padding: 1.4rem 1rem 1rem;
+    max-height: 98vh;
+    overflow-y: auto;
+  }
+  .login-box h1 { font-size: 1.6rem; }
+}
+
+/* ── Utility ──────────────────────────────────────────────── */
+.hidden { display: none !important; }

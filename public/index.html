@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Spielefest</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ── Login-Screen ─────────────────────────────────────── -->
+  <div id="loginScreen">
+    <div class="login-box">
+      <h1>&#127914; Spielefest</h1>
+      <p class="subtitle">Zeichne dein Gesicht und betritt das Fest</p>
+
+      <div class="face-section">
+        <div class="canvas-wrap">
+          <canvas id="faceCanvas" width="200" height="200"></canvas>
+          <span id="drawHint" class="draw-hint">Hier zeichnen</span>
+        </div>
+
+        <div class="draw-tools">
+          <label class="tool-label">
+            Farbe
+            <input type="color" id="colorPicker" value="#1a1a1a">
+          </label>
+          <label class="tool-label">
+            Pinselgroesse
+            <input type="range" id="brushSize" min="1" max="32" value="8">
+          </label>
+          <div class="tool-row">
+            <button id="btnPencil" class="tool-btn active" title="Stift">&#9998;</button>
+            <button id="btnEraser" class="tool-btn"        title="Radierer">&#9723;</button>
+            <button id="btnClear"  class="tool-btn"        title="Alles loeschen">&#128465;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="skin-row">
+        <label class="tool-label skin-label">
+          Hautfarbe
+          <input type="color" id="skinColorPicker" value="#ffce9e">
+        </label>
+        <div class="swatch-row">
+          <button class="swatch-btn active" data-color="#ffce9e" style="background:#ffce9e" title="Hell-Beige"></button>
+          <button class="swatch-btn" data-color="#f5c5a3" style="background:#f5c5a3" title="Pfirsich"></button>
+          <button class="swatch-btn" data-color="#e8956d" style="background:#e8956d" title="Karamel"></button>
+          <button class="swatch-btn" data-color="#c68642" style="background:#c68642" title="Braun"></button>
+          <button class="swatch-btn" data-color="#8d5524" style="background:#8d5524" title="Dunkelbraun"></button>
+          <button class="swatch-btn" data-color="#4a2912" style="background:#4a2912" title="Schokolade"></button>
+          <button class="swatch-btn" data-color="#b0e8b0" style="background:#b0e8b0" title="Mintgrün"></button>
+          <button class="swatch-btn" data-color="#a8c8f0" style="background:#a8c8f0" title="Himmelblau"></button>
+        </div>
+      </div>
+
+      <div class="skin-row">
+        <label class="tool-label skin-label">
+          T-Shirt Farbe
+          <input type="color" id="shirtColorPicker" value="#5b9bd5">
+        </label>
+        <div class="swatch-row" id="shirtSwatches">
+          <button class="swatch-btn active" data-shirt="#5b9bd5" style="background:#5b9bd5" title="Blau"></button>
+          <button class="swatch-btn" data-shirt="#e74c3c" style="background:#e74c3c" title="Rot"></button>
+          <button class="swatch-btn" data-shirt="#27ae60" style="background:#27ae60" title="Grün"></button>
+          <button class="swatch-btn" data-shirt="#f39c12" style="background:#f39c12" title="Orange"></button>
+          <button class="swatch-btn" data-shirt="#8e44ad" style="background:#8e44ad" title="Lila"></button>
+          <button class="swatch-btn" data-shirt="#f1c40f" style="background:#f1c40f" title="Gelb"></button>
+          <button class="swatch-btn" data-shirt="#1abc9c" style="background:#1abc9c" title="Türkis"></button>
+          <button class="swatch-btn" data-shirt="#2c2c2c" style="background:#2c2c2c" title="Schwarz"></button>
+        </div>
+      </div>
+
+      <input id="playerName" type="text" placeholder="Dein Name …"
+             maxlength="15" autocomplete="off" spellcheck="false">
+
+      <button id="joinBtn">Fest betreten &#8594;</button>
+
+      <p class="controls-hint" id="desktopHint">
+        WASD bewegen &nbsp;&middot;&nbsp; Maus ziehen = Kamera &nbsp;&middot;&nbsp; Scroll = Zoom
+      </p>
+      <p class="controls-hint hidden" id="touchHint">
+        Linker Kreis = Laufen &nbsp;&middot;&nbsp; Rechter Kreis = Kamera &nbsp;&middot;&nbsp; +/&#8722; = Zoom
+      </p>
+    </div>
+  </div>
+
+  <!-- ── HUD ──────────────────────────────────────────────── -->
+  <div id="hud" class="hidden">
+    <div id="playerCount">&#128101; 1</div>
+    <div id="hudRight">
+      <span class="hud-key">WASD</span> Bewegen &nbsp;
+      <span class="hud-key">Maus</span> Kamera &nbsp;
+      <span class="hud-key">Scroll</span> Zoom
+    </div>
+  </div>
+
+  <!-- ── Touch-Steuerung: Joysticks + Zoom ─────────────────── -->
+  <div id="joyLeft"  class="joy-base hidden">
+    <div class="joy-knob"></div>
+    <div class="joy-label"></div>
+  </div>
+  <div id="joyRight" class="joy-base hidden">
+    <div class="joy-knob"></div>
+    <div class="joy-label"></div>
+  </div>
+  <div id="zoomBtns" class="zoom-btns hidden">
+    <button id="btnZoomIn"  class="zoom-btn" title="Heranzoomen">+</button>
+    <button id="btnZoomOut" class="zoom-btn" title="Rauszoomen">&#8722;</button>
+  </div>
+  <button id="btnCamCenter" class="cam-center-btn hidden" title="Kamera hinter Avatar zentrieren">&#127919;</button>
+
+  <!-- ── Stand-Panel (erscheint wenn Spieler am Stand steht) ─ -->
+  <div id="boothPanel" class="hidden">
+    <div class="bp-name"    id="bpName">Stand 1</div>
+    <div class="bp-players" id="bpPlayers">
+      <div class="bp-bar"><div class="bp-bar-fill" id="bpBarFill"></div></div>
+      <span id="bpPlayerText">1 / 2 Spieler hier</span>
+    </div>
+    <button id="bpStartBtn" class="bp-start hidden">&#9654; Minigame starten!</button>
+    <p id="bpWaitText" class="bp-wait">Warte auf mehr Spieler&hellip;</p>
+  </div>
+
+  <!-- ── Pet-Panel (Stand 6: Adopt a Pet) ────────────────── -->
+  <div id="petPanel" class="hidden"></div>
+
+  <!-- ── Flappy Chopper Panel (Stand 7) ───────────────────── -->
+  <div id="flappyPanel" class="hidden"></div>
+
+  <!-- ── Coming Soon Panel (Stand 8) ──────────────────────── -->
+  <div id="comingSoonPanel" class="hidden"></div>
+
+  <!-- ── Minigame-Overlay (wird per JS befüllt) ───────────── -->
+  <div id="minigameOverlay" class="hidden"></div>
+
+  <!-- ── 3D-Canvas ────────────────────────────────────────── -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- ── Scripts ──────────────────────────────────────────── -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+    }
+  }
+  </script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="js/main.js"></script>
+
+</body>
+</html>
