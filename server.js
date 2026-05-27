@@ -271,6 +271,12 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('fp:finish', () => {
+    const game = _fpGameOf(socket.id);
+    if (!game || !game.active || socket.id !== game.painter) return;
+    _fpEndRound(game);
+  });
+
   socket.on('fp:faceComplete', ({ faceData }) => {
     const game = _fpGameOf(socket.id);
     if (!game || socket.id !== game.painter) return;
@@ -566,22 +572,29 @@ function _fpStartRound(game) {
   if (game._timer) clearTimeout(game._timer);
   game._timer = setTimeout(() => {
     if (!activeGames[game.boothId]) return;
-    _emit(allIds, 'fp:roundEnd', { round: game.round });
-    if (game.round === 1) {
-      // Tausch erst nach 3 Sekunden – so hat der Maler Zeit, fp:faceComplete zu schicken,
-      // bevor game.painter auf den neuen Maler umgestellt wird.
-      setTimeout(() => {
-        if (!activeGames[game.boothId]) return;
-        game.round   = 2;
-        [game.painter, game.subject] = [game.subject, game.painter];
-        _fpStartRound(game);
-      }, 3000);
-    } else {
-      game.active = false;
-      _emit(allIds, 'fp:done', null);
-      setTimeout(() => { delete activeGames[game.boothId]; }, 10000);
-    }
+    _fpEndRound(game);
   }, 30000);
+}
+
+// Runde beenden – vom Timer ODER vom Maler per fp:finish aufrufbar
+function _fpEndRound(game) {
+  if (game._timer) { clearTimeout(game._timer); game._timer = null; }
+  const allIds = _fpAllIds(game);
+  _emit(allIds, 'fp:roundEnd', { round: game.round });
+  if (game.round === 1) {
+    // Tausch erst nach 3 Sekunden – so hat der Maler Zeit, fp:faceComplete zu schicken,
+    // bevor game.painter auf den neuen Maler umgestellt wird.
+    setTimeout(() => {
+      if (!activeGames[game.boothId]) return;
+      game.round   = 2;
+      [game.painter, game.subject] = [game.subject, game.painter];
+      _fpStartRound(game);
+    }, 3000);
+  } else {
+    game.active = false;
+    _emit(allIds, 'fp:done', null);
+    setTimeout(() => { delete activeGames[game.boothId]; }, 10000);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════

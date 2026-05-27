@@ -154,6 +154,31 @@ export class FacepaintGame {
     // Stift initial hervorheben
     requestAnimationFrame(() => setTool('pencil'));
     drawWrap.appendChild(tools);
+
+    // ── Finish-Button (nur für Maler sichtbar) ──────────────
+    const finishBtn = document.createElement('button');
+    finishBtn.id          = 'fpFinishBtn';
+    finishBtn.textContent = '✅  Fertig!';
+    finishBtn.style.cssText = [
+      'display:none;margin-top:6px;padding:10px 28px;',
+      'cursor:pointer;border-radius:8px;',
+      'border:2px solid #22c55e;background:#15803d;',
+      'color:#fff;font:bold 16px Arial;letter-spacing:1px;',
+      'transition:background .15s,opacity .15s;'
+    ].join('');
+    finishBtn.addEventListener('pointerenter', () => { if (!finishBtn.disabled) finishBtn.style.background = '#16a34a'; });
+    finishBtn.addEventListener('pointerleave', () => { if (!finishBtn.disabled) finishBtn.style.background = '#15803d'; });
+    finishBtn.addEventListener('click', () => {
+      if (finishBtn.disabled) return;
+      finishBtn.disabled      = true;
+      finishBtn.style.opacity = '0.45';
+      finishBtn.style.cursor  = 'default';
+      // Timer visuell auf 0 setzen
+      const t = document.getElementById('fpTimer');
+      if (t) { t.textContent = '0'; t.style.color = '#ff2222'; }
+      this.socket.emit('fp:finish');
+    });
+    drawWrap.appendChild(finishBtn);
     main.appendChild(drawWrap);
 
     // ── Vorschau-Seite ──
@@ -290,6 +315,16 @@ export class FacepaintGame {
       const drawLabel = document.getElementById('fpDrawLabel');
       if (drawLabel) drawLabel.textContent = this.isPainter ? `Gesicht von ${data.subjectName}` : 'Dein Gesicht';
 
+      // Finish-Button zurücksetzen und nur für den Maler zeigen
+      const finishBtn = document.getElementById('fpFinishBtn');
+      if (finishBtn) {
+        finishBtn.style.display = this.isPainter ? 'block' : 'none';
+        finishBtn.disabled      = false;
+        finishBtn.style.opacity = '1';
+        finishBtn.style.cursor  = 'pointer';
+        finishBtn.style.background = '#15803d';
+      }
+
       // Timer starten
       if (this._timerInt) clearInterval(this._timerInt);
       this._timerInt = setInterval(() => {
@@ -313,6 +348,9 @@ export class FacepaintGame {
 
     this.socket.on('fp:roundEnd', ({ round }) => {
       if (this._timerInt) clearInterval(this._timerInt);
+      // Finish-Button ausblenden
+      const finishBtn = document.getElementById('fpFinishBtn');
+      if (finishBtn) { finishBtn.style.display = 'none'; finishBtn.disabled = true; }
       // Maler schickt das fertige Gesicht
       if (this.isPainter && this.drawCanvas) {
         const faceData = this.drawCanvas.toDataURL('image/png');
@@ -340,6 +378,7 @@ export class FacepaintGame {
   }
 
   _unbindSocket() {
-    ['fp:roundStart','fp:stroke','fp:roundEnd','fp:faceUpdate','fp:done'].forEach(e => this.socket.off(e));
+    ['fp:roundStart','fp:stroke','fp:roundEnd','fp:faceUpdate','fp:done']
+      .forEach(e => this.socket.off(e));
   }
 }
