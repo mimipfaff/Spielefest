@@ -57,6 +57,7 @@ export function createAvatarMesh(faceData, bodyColor = 0x5b9bd5, skinColor = COL
     : new THREE.MeshLambertMaterial({ color: skinColor });
   const faceDisc = new THREE.Mesh(new THREE.CircleGeometry(discR, 40), faceMat);
   faceDisc.position.z = CUT_Z + 0.005;
+  faceDisc.renderOrder = 1;   // nach Haar rendern → Gesicht immer sichtbar über Haar
   head.add(faceDisc);
 
   // ── Haare (optional, auf den Kopf-Gruppen-Origin bezogen) ──
@@ -179,27 +180,34 @@ function _faceMat(faceData) {
  *   z=+CUT_Z ≈ +0.285 = Gesichtsscheibe (vorne)
  *   z=-HEAD_R = Hinterkopf
  *
- * Haarsphäre: r=0.62, Mitte bei z=-0.21, scale_z=0.80
- *   → Vorderkante bei -0.21 + 0.62×0.80 = +0.286 ≈ direkt hinter Gesichtsscheibe
+ * depthWrite:false → Haar schreibt nicht in den Tiefenpuffer.
+ * Die Gesichtsscheibe (renderOrder=1) rendert danach in einen Puffer
+ * ohne Haar-Tiefe → besteht Tiefentest und überdeckt das Haar korrekt.
+ *
+ * Kappe: Mitte bei z=0, scale_z=0.80
+ *   → Vorderkante bei +0.496 (geometrisch vor Scheibe), aber Scheibe überschreibt ✓
+ *   → An Gesichtskante (x≈0.509): Haar z=+0.306 > Kopfsphäre z=0.278 → sichtbar ✓
+ * Vorhang: Mitte bei z=-0.30
+ *   → Auf Halshöhe (y=-0.58): Vorhang z=+0.174 < Hals-Vorderseite (≈0.21) → Hals vorne ✓
  */
 function _addHair(headGroup, style, colorHex) {
-  const mat = new THREE.MeshLambertMaterial({ color: colorHex });
+  // depthWrite:false → Haar schreibt keinen Tiefenwert, Gesichtsscheibe rendert korrekt drüber
+  const mat = new THREE.MeshLambertMaterial({ color: colorHex, depthWrite: false });
 
   // ── Kappe (kurz UND lang) ────────────────────────────────────
-  // Leicht gedrückte Kugel deckt Scheitel + Seiten ab
+  // Mitte bei z=0 → reicht geometrisch bis an Gesichtskante und darüber hinaus,
+  // wird aber im Gesichtsbereich von der Scheibe (renderOrder=1) überblendet.
   const cap = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 10), mat);
-  cap.position.set(0, 0.06, -0.21);
-  cap.scale.set(1.04, 0.92, 0.80);
-  cap.castShadow = true;
+  cap.position.set(0, 0.06, 0);
+  cap.scale.set(1.05, 0.92, 0.80);
   headGroup.add(cap);
 
   if (style === 'long') {
     // ── Vorhang (nur lang) ───────────────────────────────────
-    // Hohe Ellipse hängt von Kopfseite/-rücken bis Schulterniveau
+    // Mitte bei z=-0.30 → Vorhang-Vorderseite auf Halshöhe hinter dem Hals
     const curtain = new THREE.Mesh(new THREE.SphereGeometry(0.62, 14, 10), mat);
-    curtain.position.set(0, -0.32, -0.21);
+    curtain.position.set(0, -0.32, -0.30);
     curtain.scale.set(1.00, 1.42, 0.80);
-    curtain.castShadow = true;
     headGroup.add(curtain);
   }
 }
