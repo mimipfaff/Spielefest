@@ -157,6 +157,81 @@ bpStartBtn.addEventListener('click', () => {
 });
 
 // Fehler-Feedback vom Server (z.B. zu wenig Spieler)
+// ─────────────────────────────────────────────────────────────
+// AFK-Warnung (Overlay mit Countdown + "Ich bin noch da!"-Button)
+// ─────────────────────────────────────────────────────────────
+let _afkOverlay    = null;
+let _afkCountdown  = null;
+let _afkInterval   = null;
+let _afkDismissHandler = null;
+
+function _showAfkWarning(secondsLeft) {
+  _hideAfkWarning();   // evtl. alten Overlay aufräumen
+
+  _afkOverlay = document.createElement('div');
+  _afkOverlay.style.cssText = [
+    'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:8000;',
+    'background:rgba(20,10,0,.96);border:2px solid #ff9900;border-radius:14px;',
+    'padding:18px 28px;min-width:300px;max-width:96vw;text-align:center;',
+    'font-family:Arial;box-shadow:0 4px 32px rgba(255,153,0,.4);'
+  ].join('');
+
+  const icon = document.createElement('div');
+  icon.style.cssText = 'font-size:36px;margin-bottom:6px;';
+  icon.textContent = '⏰';
+
+  const msg = document.createElement('div');
+  msg.style.cssText = 'color:#ffcc66;font:bold 16px Arial;margin-bottom:4px;';
+  msg.textContent = 'Bist du noch da?';
+
+  _afkCountdown = document.createElement('div');
+  _afkCountdown.style.cssText = 'color:#ff9900;font:14px Arial;margin-bottom:14px;';
+
+  const btn = document.createElement('button');
+  btn.textContent = '🙋 Ich bin noch da!';
+  btn.style.cssText = [
+    'padding:10px 24px;font:bold 15px Arial;cursor:pointer;',
+    'border-radius:8px;border:none;background:#ff9900;color:#000;'
+  ].join('');
+
+  _afkOverlay.append(icon, msg, _afkCountdown, btn);
+  document.body.appendChild(_afkOverlay);
+
+  // Countdown aktualisieren
+  let remaining = secondsLeft;
+  function _tick() {
+    _afkCountdown.textContent =
+      `Du wirst in ${remaining} Sekunde${remaining !== 1 ? 'n' : ''} abgemeldet.`;
+    if (remaining <= 0) { clearInterval(_afkInterval); _afkInterval = null; }
+    remaining--;
+  }
+  _tick();
+  _afkInterval = setInterval(_tick, 1000);
+
+  // Bestätigung: Button-Klick ODER erste Interaktion (Maus, Touch, Taste)
+  function _dismiss() {
+    _hideAfkWarning();
+    if (network?.socket) network.socket.emit('afk:ping');
+  }
+  btn.addEventListener('click', _dismiss, { once: true });
+  _afkDismissHandler = _dismiss;
+  document.addEventListener('keydown',    _dismiss, { once: true });
+  document.addEventListener('mousemove',  _dismiss, { once: true });
+  document.addEventListener('touchstart', _dismiss, { once: true, passive: true });
+}
+
+function _hideAfkWarning() {
+  if (_afkInterval)  { clearInterval(_afkInterval); _afkInterval = null; }
+  if (_afkOverlay)   { _afkOverlay.remove(); _afkOverlay = null; }
+  _afkCountdown = null;
+  if (_afkDismissHandler) {
+    document.removeEventListener('keydown',    _afkDismissHandler);
+    document.removeEventListener('mousemove',  _afkDismissHandler);
+    document.removeEventListener('touchstart', _afkDismissHandler);
+    _afkDismissHandler = null;
+  }
+}
+
 function showBoothError(msg) {
   const existing = document.getElementById('bpErrorMsg');
   if (existing) existing.remove();
@@ -549,6 +624,24 @@ setupLoginScreen(({ name, faceData, skinColor, shirtColor, hairStyle, hairColor 
       const hsList = document.getElementById('fcHsList');
       if (hsList) _fillHsList(hsList, scores);
     }
+  });
+
+  // AFK – Warnung und automatische Abmeldung
+  network.socket.on('afk:warn', (secondsLeft) => _showAfkWarning(secondsLeft));
+  network.socket.on('afk:kick', () => {
+    _hideAfkWarning();
+    const overlay = document.createElement('div');
+    overlay.style.cssText = [
+      'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;',
+      'display:flex;flex-direction:column;align-items:center;justify-content:center;',
+      'font-family:Arial;color:#fff;text-align:center;gap:10px;'
+    ].join('');
+    overlay.innerHTML =
+      '<div style="font-size:52px">😴</div>' +
+      '<div style="font-size:22px;font-weight:bold;">Wegen Inaktivität abgemeldet</div>' +
+      '<div style="color:#aaa;font-size:15px;">Du wirst zur Anmeldeseite weitergeleitet …</div>';
+    document.body.appendChild(overlay);
+    setTimeout(() => location.reload(), 3000);
   });
 
   // Fehler beim Starten (zu wenig Spieler o.ä.)

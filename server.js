@@ -93,6 +93,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ─────────────────────────────────────────────────────────────
 const MAX_PLAYERS    = 30;
 const BOOTH_COUNT    = 8;
+const AFK_WARN_MS    = 4 * 60 * 1000;   // 4 Minuten ohne Aktivität → Warnung
+const AFK_KICK_MS    = 5 * 60 * 1000;   // 5 Minuten ohne Aktivität → Abmelden
 const BOOTH_GAME_MAP    = { 1: 'kickslap', 2: 'facepaint', 3: 'polls', 4: 'racealong', 5: 'speedmaths' };
 const GAME_MIN_PLAYERS = { kickslap: 2, facepaint: 2, polls: 5, racealong: 2, speedmaths: 2 };
 
@@ -105,6 +107,8 @@ const activeGames  = {};        // { [boothId]: GameState }
 const moveTimes    = {};        // { [socketId]: lastBroadcastMs } – Throttle für move-Events
 const scoreTimes   = {};        // { [socketId]: lastSubmitMs }   – Rate-Limit fc:submitScore
 const questionTimes= {};        // { [socketId]: lastQuestionMs } – Rate-Limit po:submitQuestion
+const activityTimes= {};        // { [socketId]: lastActivityMs } – AFK-Erkennung
+const afkWarnedSet = new Set(); // Sockets, denen bereits eine Warnung gesendet wurde
 
 // ─── Haustiere ────────────────────────────────────────────────
 // petOwners: { petId: socketId | null }
@@ -150,7 +154,18 @@ io.on('connection', (socket) => {
     socket.emit('serverFull'); socket.disconnect(true); return;
   }
   playerBooth[socket.id] = null;
+  activityTimes[socket.id] = Date.now();
   console.log(`[+] ${socket.id}`);
+
+  // Jedes eingehende Event aktualisiert den Aktivitäts-Timestamp (AFK-Reset)
+  socket.use((_, next) => {
+    activityTimes[socket.id] = Date.now();
+    if (afkWarnedSet.has(socket.id)) afkWarnedSet.delete(socket.id);
+    next();
+  });
+
+  // Explizites Anwesenheits-Ping (von der AFK-Warnung im Client)
+  socket.on('afk:ping', () => { /* wird bereits durch socket.use behandelt */ });
 
   // ── join ────────────────────────────────────────────────
   socket.on('join', ({ name, faceData, skinColor, shirtColor, hairStyle, hairColor }) => {
@@ -564,6 +579,8 @@ io.on('connection', (socket) => {
     delete moveTimes[socket.id];
     delete scoreTimes[socket.id];
     delete questionTimes[socket.id];
+    delete activityTimes[socket.id];
+    afkWarnedSet.delete(socket.id);
 
     const p = players[socket.id];
     if (p) {
@@ -581,6 +598,26 @@ io.on('connection', (socket) => {
     io.emit('boothCounts', getBoothCounts());
   });
 });
+
+// ─────────────────────────────────────────────────────────────
+// AFK-Prüfung (alle 20 Sekunden)
+// ─────────────────────────────────────────────────────────────
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, lastActive] of Object.entries(activityTimes)) {
+    const idle = now - lastActive;
+    const s    = io.sockets.sockets.get(id);
+    if (!s) { delete activityTimes[id]; afkWarnedSet.delete(id); continue; }
+    if (idle >= AFK_KICK_MS) {
+      console.log(`[AFK] "${players[id]?.name || id}" abgemeldet (${Math.round(idle / 1000)}s inaktiv)`);
+      s.emit('afk:kick');
+      s.disconnect(true);
+    } else if (idle >= AFK_WARN_MS && !afkWarnedSet.has(id)) {
+      afkWarnedSet.add(id);
+      s.emit('afk:warn', Math.ceil((AFK_KICK_MS - idle) / 1000));
+    }
+  }
+}, 20_000);
 
 // ═══════════════════════════════════════════════════════════════
 // KICK & SLAP – Logik
