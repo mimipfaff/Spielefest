@@ -278,7 +278,7 @@ export class PollsGame {
   }
 
   _showRoundResult(data) {
-    // data: { idx, total, text, results: [{id, votes, name}], voteMap }
+    // data: { idx, total, text, results: [{id, votes, name}] }
     const card = document.getElementById('poCard');
     if (!card) return;
     if (this._timerInt) clearInterval(this._timerInt);
@@ -490,7 +490,7 @@ export class PollsGame {
     });
 
     // Rundenresultat
-    // Server schickt { idx, total, text, results: [{id, votes, name}], voteMap }
+    // Server schickt { idx, total, text, results: [{id, votes, name}] }
     this.socket.on('po:roundResult', data => {
       this._showRoundResult(data);
     });

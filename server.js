@@ -71,6 +71,23 @@ async function _addScore(entry) {
   }
 }
 
+// ── HTTP Security-Headers ─────────────────────────────────────
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy',
+    "default-src 'self' https://unpkg.com; " +
+    "script-src 'self' 'unsafe-inline' https://unpkg.com; " +
+    "connect-src 'self' wss: ws:; " +
+    "img-src 'self' data: blob:; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "frame-ancestors 'none';"
+  );
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ─────────────────────────────────────────────────────────────
@@ -86,6 +103,8 @@ for (let i = 1; i <= BOOTH_COUNT; i++) boothPlayers[i] = new Set();
 
 const activeGames  = {};        // { [boothId]: GameState }
 const moveTimes    = {};        // { [socketId]: lastBroadcastMs } – Throttle für move-Events
+const scoreTimes   = {};        // { [socketId]: lastSubmitMs }   – Rate-Limit fc:submitScore
+const questionTimes= {};        // { [socketId]: lastQuestionMs } – Rate-Limit po:submitQuestion
 
 // ─── Haustiere ────────────────────────────────────────────────
 // petOwners: { petId: socketId | null }
@@ -135,11 +154,21 @@ io.on('connection', (socket) => {
 
   // ── join ────────────────────────────────────────────────
   socket.on('join', ({ name, faceData, skinColor, shirtColor, hairStyle, hairColor }) => {
+    // faceData: max. 65 KB, muss ein Data-URL-Bild sein
+    const MAX_FACE = 65_000;
+    let safeFace = null;
+    if (faceData && typeof faceData === 'string') {
+      if (faceData.length > MAX_FACE) { socket.emit('serverError', 'faceData zu groß'); return; }
+      if (!faceData.startsWith('data:image/') || !faceData.includes(';base64,')) {
+        socket.emit('serverError', 'Ungültiges Bildformat'); return;
+      }
+      safeFace = faceData;
+    }
     players[socket.id] = {
       id: socket.id,
       name: (name || 'Spieler').substring(0, 15),
       x: (Math.random() - 0.5) * 20, y: 0, z: (Math.random() - 0.5) * 20,
-      rotY: 0, faceData: faceData || null, skinColor: skinColor || null,
+      rotY: 0, faceData: safeFace, skinColor: skinColor || null,
       shirtColor: shirtColor || null, petId: null,
       hairStyle: hairStyle || null, hairColor: hairColor || null
     };
@@ -333,8 +362,16 @@ io.on('connection', (socket) => {
   socket.on('fp:stroke', (strokeData) => {
     const game = _fpGameOf(socket.id);
     if (!game || !game.active || socket.id !== game.painter) return;
+    // Schema validieren: nur bekannte Felder mit korrekten Typen weiterleiten
+    if (!strokeData || typeof strokeData !== 'object') return;
+    const { x1, y1, x2, y2, color, r } = strokeData;
+    const inCanvas = v => typeof v === 'number' && isFinite(v) && v >= 0 && v <= 512;
+    if (!inCanvas(x1) || !inCanvas(y1) || !inCanvas(x2) || !inCanvas(y2)) return;
+    if (typeof r !== 'number' || !isFinite(r) || r < 0.5 || r > 60) return;
+    if (typeof color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(color)) return;
+    const safe = { x1, y1, x2, y2, color, r };
     _fpAllIds(game).forEach(id => {
-      if (id !== socket.id) { const s = io.sockets.sockets.get(id); if (s) s.emit('fp:stroke', strokeData); }
+      if (id !== socket.id) { const s = io.sockets.sockets.get(id); if (s) s.emit('fp:stroke', safe); }
     });
   });
 
@@ -360,6 +397,10 @@ io.on('connection', (socket) => {
   socket.on('po:submitQuestion', ({ text }) => {
     const game = _poGameOf(socket.id);
     if (!game || game.phase !== 'collecting') return;
+    // Rate-Limiting: max. 1 Frage pro 5 Sekunden
+    const nowTs = Date.now();
+    if (questionTimes[socket.id] && nowTs - questionTimes[socket.id] < 5_000) return;
+    questionTimes[socket.id] = nowTs;
     const t = (text || '').trim().substring(0, 120);
     if (!t) return;
     const idx = game.questions.findIndex(q => q.authorId === socket.id);
@@ -402,7 +443,10 @@ io.on('connection', (socket) => {
   socket.on('ra:moved', ({ x, y, dir }) => {
     const game = _raGameOf(socket.id);
     if (!game || !game.active) return;
-    // Relay an alle anderen im Spiel
+    // Koordinaten validieren: Spielfeld 0-600 / 0-500, dir = endliche Zahl (Radiant)
+    if (typeof x !== 'number' || !isFinite(x) || x < -50 || x > 650) return;
+    if (typeof y !== 'number' || !isFinite(y) || y < -50 || y > 550) return;
+    if (typeof dir !== 'number' || !isFinite(dir)) return;
     _raAllIds(game).forEach(id => {
       if (id !== socket.id) {
         const s = io.sockets.sockets.get(id);
@@ -497,6 +541,10 @@ io.on('connection', (socket) => {
 
   socket.on('fc:submitScore', async ({ name, score }) => {
     if (typeof score !== 'number' || score < 0 || score > 99999) return;
+    // Rate-Limiting: max. 1 Einreichung pro 10 Sekunden
+    const nowTs = Date.now();
+    if (scoreTimes[socket.id] && nowTs - scoreTimes[socket.id] < 10_000) return;
+    scoreTimes[socket.id] = nowTs;
     const p     = players[socket.id];
     const safeN = (name || p?.name || 'Spieler').substring(0, 15);
     const safeS = Math.floor(score);
@@ -514,6 +562,8 @@ io.on('connection', (socket) => {
     removeFromBooth(socket.id);
     delete playerBooth[socket.id];
     delete moveTimes[socket.id];
+    delete scoreTimes[socket.id];
+    delete questionTimes[socket.id];
 
     const p = players[socket.id];
     if (p) {
@@ -735,9 +785,10 @@ function _poProcessRound(game) {
   const results = Object.entries(tally)
     .sort((a, b) => b[1] - a[1])
     .map(([id, votes]) => ({ id, votes, name: players[id]?.name || '?' }));
+  // voteMap bewusst nicht gesendet – Abstimmungsgeheimnis wahren
   _emit(game.players, 'po:roundResult', {
     idx: game.currentQ, total: game.questions.length,
-    text: q.text, results, voteMap: game.votes[game.currentQ] || {}
+    text: q.text, results
   });
   game.currentQ++;
   game._timer = setTimeout(() => { if (activeGames[game.boothId]) _poAskNext(game); }, 6000);
