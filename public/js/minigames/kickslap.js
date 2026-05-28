@@ -459,7 +459,17 @@ export class KickSlapGame {
         if (target) {
           target.targetX = targetX; target.targetY = targetY;
           target._hitT   = Date.now();
-          if (eliminated) { target.eliminated = true; target._elimT = Date.now(); }
+          if (eliminated) {
+            target.eliminated  = true;
+            target._elimT      = Date.now();
+            // Auswurfsrichtung: vom Ringzentrum (Three.js 0,0) nach außen
+            const ex  = sw(targetX), ez = sw(targetY);
+            const len = Math.hypot(ex, ez) || 1;
+            target._elimStartX = ex;
+            target._elimStartZ = ez;
+            target._elimDirX   = ex / len;
+            target._elimDirZ   = ez / len;
+          }
           if (targetId === this.selfId) this.stunUntil = Date.now() + 300;
           this._addHitFx(sw(targetX), sw(targetY));
         }
@@ -527,12 +537,31 @@ export class KickSlapGame {
     Object.values(this._av).forEach(av => {
       const { group, parts } = av;
 
-      // ── Ausgeschieden: Avatar kippt zur Seite ──────────────
+      // ── Ausgeschieden: aus dem Ring herausfliegen ──────────
       if (av.eliminated) {
-        const t = Math.min(1, (now - av._elimT) / 700);
-        group.rotation.z = t * (Math.PI / 2);
-        group.position.y = -(t * 0.45);
-        if (av.nameTag) av.nameTag.lookAt(this._camera.position);
+        const ELIM_DUR = 1400;
+        const t  = Math.min(1, (now - av._elimT) / ELIM_DUR);
+        const sx = av._elimStartX ?? group.position.x;
+        const sz = av._elimStartZ ?? group.position.z;
+        const dx = av._elimDirX  ?? 0;
+        const dz = av._elimDirZ  ?? 1;
+
+        // Beschleunigter Wurf nach außen
+        group.position.x = sx + dx * t * t * 16;
+        group.position.z = sz + dz * t * t * 16;
+
+        // Parabolischer Bogen: kurz hoch, dann tief unter den Ring
+        group.position.y = 3.8 * Math.sin(t * Math.PI) - t * t * 7;
+
+        // Rotierende Überschläge
+        group.rotation.z = t * Math.PI * 2.5;
+        group.rotation.x = t * Math.PI * 1.2;
+
+        // Name-Tag ausblenden sobald der Avatar über den Rand fliegt
+        if (av.nameTag) {
+          av.nameTag.visible = t < 0.35;
+          av.nameTag.lookAt(this._camera.position);
+        }
         return;
       }
 
