@@ -57,19 +57,26 @@ async function _addScore(entry) {
       .sort({ score: -1 }).limit(10).toArray();
   }
   // Datei-Fallback
+  // Schritt 1: vorhandene Einträge lesen (ENOENT = noch keine Datei → leeres Array)
+  let arr = [];
   try {
-    const raw    = fs.readFileSync(HIGHSCORE_FILE, 'utf8');
+    const raw = fs.readFileSync(HIGHSCORE_FILE, 'utf8');
     const parsed = JSON.parse(raw);
-    const arr    = Array.isArray(parsed) ? parsed : [];
-    arr.push(entry);
-    arr.sort((a, b) => b.score - a.score);
-    arr.splice(10);
+    arr = Array.isArray(parsed) ? parsed : [];
+  } catch { /* Datei existiert noch nicht oder ist beschädigt – starten wir frisch */ }
+
+  // Schritt 2: neuen Eintrag einfügen und sortieren
+  arr.push(entry);
+  arr.sort((a, b) => b.score - a.score);
+  arr.splice(10);
+
+  // Schritt 3: speichern (Fehler werden geloggt, aber das Array wird trotzdem zurückgegeben)
+  try {
     fs.writeFileSync(HIGHSCORE_FILE, JSON.stringify(arr, null, 2), 'utf8');
-    return arr;
   } catch (e) {
     console.error('[Highscore] Speichern fehlgeschlagen:', e.message);
-    return [];
   }
+  return arr;  // immer zurückgeben – auch wenn Speichern scheitert
 }
 
 // ── HTTP Security-Headers ─────────────────────────────────────
