@@ -9,25 +9,65 @@ const server = http.createServer(app);
 const io     = new Server(server, { maxHttpBufferSize: 5e6 });
 
 // ─────────────────────────────────────────────────────────────
-// Highscore-Persistenz (flappychopper.js – Stand 7)
+// Highscore-Persistenz: MongoDB Atlas (primär) + JSON-Datei (Fallback)
 // ─────────────────────────────────────────────────────────────
 const HIGHSCORE_FILE = path.join(__dirname, 'highscores.json');
+let _hsCollection    = null;
 
-function _readHighscores() {
+// Verbindung zu MongoDB Atlas aufbauen (falls MONGODB_URI gesetzt)
+(async () => {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) { console.log('[Highscore] Kein MONGODB_URI – nutze JSON-Datei.'); return; }
   try {
-    const raw = fs.readFileSync(HIGHSCORE_FILE, 'utf8');
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch (_) {
-    return [];
+    const { MongoClient } = require('mongodb');
+    const client = new MongoClient(uri);
+    await client.connect();
+    _hsCollection = client.db('spielefest').collection('highscores');
+    console.log('[Highscore] MongoDB Atlas verbunden');
+  } catch (e) {
+    console.error('[Highscore] MongoDB-Fehler:', e.message, '– Fallback auf Datei');
   }
+})();
+
+// Top-10 lesen
+async function _readHighscores() {
+  if (_hsCollection) {
+    return await _hsCollection
+      .find({}, { projection: { _id: 0 } })
+      .sort({ score: -1 }).limit(10).toArray();
+  }
+  try {
+    const data = JSON.parse(fs.readFileSync(HIGHSCORE_FILE, 'utf8'));
+    return Array.isArray(data) ? data : [];
+  } catch { return []; }
 }
 
-function _writeHighscores(scores) {
+// Eintrag hinzufügen → gibt aktualisierte Top-10 zurück
+async function _addScore(entry) {
+  if (_hsCollection) {
+    await _hsCollection.insertOne({ ...entry });
+    // Älteste Einträge außerhalb der Top-10 löschen
+    const all = await _hsCollection.find({}).sort({ score: -1 }).toArray();
+    if (all.length > 10) {
+      const overflow = all.slice(10).map(d => d._id);
+      await _hsCollection.deleteMany({ _id: { $in: overflow } });
+    }
+    return await _hsCollection
+      .find({}, { projection: { _id: 0 } })
+      .sort({ score: -1 }).limit(10).toArray();
+  }
+  // Datei-Fallback
   try {
-    fs.writeFileSync(HIGHSCORE_FILE, JSON.stringify(scores, null, 2), 'utf8');
+    const raw  = fs.readFileSync(HIGHSCORE_FILE, 'utf8');
+    const arr  = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+    arr.push(entry);
+    arr.sort((a, b) => b.score - a.score);
+    arr.splice(10);
+    fs.writeFileSync(HIGHSCORE_FILE, JSON.stringify(arr, null, 2), 'utf8');
+    return arr;
   } catch (e) {
     console.error('[Highscore] Speichern fehlgeschlagen:', e.message);
+    return [];
   }
 }
 
@@ -425,25 +465,20 @@ io.on('connection', (socket) => {
   // ════════════════════════════════════════════════════════
   // FLAPPY CHOPPER – Highscore-Events (Stand 7)
   // ════════════════════════════════════════════════════════
-  socket.on('fc:getHighscore', () => {
-    socket.emit('fc:highscore', _readHighscores());
+  socket.on('fc:getHighscore', async () => {
+    socket.emit('fc:highscore', await _readHighscores());
   });
 
-  socket.on('fc:submitScore', ({ name, score }) => {
+  socket.on('fc:submitScore', async ({ name, score }) => {
     if (typeof score !== 'number' || score < 0 || score > 99999) return;
-    const p      = players[socket.id];
-    const safeN  = (name || p?.name || 'Spieler').substring(0, 15);
-    const safeS  = Math.floor(score);
-
-    const list = _readHighscores();
-    list.push({ name: safeN, score: safeS, date: new Date().toISOString().slice(0, 10) });
-    list.sort((a, b) => b.score - a.score);
-    list.splice(10); // nur Top 10 behalten
-    _writeHighscores(list);
-
+    const p     = players[socket.id];
+    const safeN = (name || p?.name || 'Spieler').substring(0, 15);
+    const safeS = Math.floor(score);
+    const entry = { name: safeN, score: safeS, date: new Date().toISOString().slice(0, 10) };
+    const list  = await _addScore(entry);
     // Broadcast an alle → wer gerade am Flappy-Stand steht sieht die Liste sofort
     io.emit('fc:highscore', list);
-    console.log(`[Highscore] ${safeN}: ${safeS} Punkte (${list.length} Einträge gesamt)`);
+    console.log(`[Highscore] ${safeN}: ${safeS} Punkte`);
   });
 
   // ── disconnect ───────────────────────────────────────────
