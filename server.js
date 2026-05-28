@@ -287,8 +287,9 @@ io.on('connection', (socket) => {
     const dx = (target.x - att.x) || 0.01;
     const dy = (target.y - att.y) || 0.01;
     const len = Math.hypot(dx, dy);
-    target.x += (dx / len) * 0.5;
-    target.y += (dy / len) * 0.5;
+    // Rückwurf = ⅓ des Ringdurchmessers (Radius 4.2 → Ø 8.4 → ⅓ ≈ 2.8)
+    target.x += (dx / len) * 2.8;
+    target.y += (dy / len) * 2.8;
     target.stunUntil = now + 250;
 
     const eliminated = Math.hypot(target.x - 5, target.y - 5) > 4.4;
