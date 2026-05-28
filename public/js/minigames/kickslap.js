@@ -4,9 +4,10 @@ import { createAvatarMesh, createNameTag } from '../avatar.js';
 // ─────────────────────────────────────────────────────────────
 // Koordinaten: Server 0–10 (Zentrum 5,5) → Three.js X/Z
 // ─────────────────────────────────────────────────────────────
-const SCALE   = 1.4;
-const ANIM_MS = 240;               // Dauer Kick/Slap-Animation (≈ doppelte Geschwindigkeit)
-const sw = v => (v - 5) * SCALE;  // server-Wert → Three.js-Achse
+const SCALE     = 1.4;
+const ANIM_MS   = 240;               // Dauer Kick/Slap-Animation (≈ doppelte Geschwindigkeit)
+const KS_RADIUS = 0.40;             // Kollisionsradius pro Avatar (Server-Einheiten)
+const sw = v => (v - 5) * SCALE;   // server-Wert → Three.js-Achse
 
 // ─────────────────────────────────────────────────────────────
 export class KickSlapGame {
@@ -363,6 +364,25 @@ export class KickSlapGame {
         ny = 5 + Math.sin(a) * this.ringRadius;
       }
 
+      // Avatar-Kollision: nicht durch andere Spieler hindurchlaufen
+      for (const [id, other] of Object.entries(this._av)) {
+        if (id === this.selfId || other.eliminated) continue;
+        const ddx = nx - other.targetX;
+        const ddy = ny - other.targetY;
+        const dist = Math.hypot(ddx, ddy);
+        if (dist < KS_RADIUS * 2 && dist > 0.001) {
+          const push = KS_RADIUS * 2 - dist;
+          nx += (ddx / dist) * push;
+          ny += (ddy / dist) * push;
+          // Ringgrenze nach Kollisionskorrektur nochmal prüfen
+          if (Math.hypot(nx - 5, ny - 5) > this.ringRadius) {
+            const a = Math.atan2(ny - 5, nx - 5);
+            nx = 5 + Math.cos(a) * this.ringRadius;
+            ny = 5 + Math.sin(a) * this.ringRadius;
+          }
+        }
+      }
+
       av.x = av.targetX = nx;
       av.y = av.targetY = ny;
       // dx → Three.js X-Richtung, dy → Three.js Z-Richtung
@@ -424,6 +444,11 @@ export class KickSlapGame {
       'ks:moved': ({ id, x, y }) => {
         const av = this._av[id];
         if (!av || av.eliminated) return;
+        if (id === this.selfId) {
+          // Server-Korrektur für eigene Position (z. B. nach Kollisionsauflösung)
+          av.x = av.targetX = x; av.y = av.targetY = y;
+          return;
+        }
         const dx = x - av.targetX, dy = y - av.targetY;
         if (Math.hypot(dx, dy) > 0.005) av.rotY = Math.atan2(dx, dy);
         av.targetX = x; av.targetY = y;

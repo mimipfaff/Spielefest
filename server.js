@@ -260,8 +260,33 @@ io.on('connection', (socket) => {
     const p = game.players[socket.id];
     if (!p || p.eliminated) return;
     if (Math.hypot(x - 5, y - 5) > 4.6) return;   // reject cheating positions
-    p.x = x; p.y = y;
-    socket.to(_ksAllIds(game)).emit('ks:moved', { id: socket.id, x, y });
+
+    // Avatar-Kollision: anderen Spielern nicht durch den Körper laufen
+    const KS_R = 0.40;
+    let cx = x, cy = y;
+    for (const other of Object.values(game.players)) {
+      if (other.id === socket.id || other.eliminated) continue;
+      const dx = cx - other.x, dy = cy - other.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < KS_R * 2 && dist > 0.001) {
+        const push = KS_R * 2 - dist;
+        cx += (dx / dist) * push;
+        cy += (dy / dist) * push;
+      }
+    }
+    // Ringgrenze nach Kollisionskorrektur sicherstellen
+    if (Math.hypot(cx - 5, cy - 5) > 4.4) {
+      const a = Math.atan2(cy - 5, cx - 5);
+      cx = 5 + Math.cos(a) * 4.4;
+      cy = 5 + Math.sin(a) * 4.4;
+    }
+
+    p.x = cx; p.y = cy;
+    // Falls Position korrigiert wurde: Sender ebenfalls informieren
+    if (Math.abs(cx - x) > 0.01 || Math.abs(cy - y) > 0.01) {
+      socket.emit('ks:moved', { id: socket.id, x: cx, y: cy });
+    }
+    socket.to(_ksAllIds(game)).emit('ks:moved', { id: socket.id, x: cx, y: cy });
   });
 
   socket.on('ks:attack', ({ type }) => {
