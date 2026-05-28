@@ -465,15 +465,19 @@ export class KickSlapGame {
             // Auswurfsrichtung: vom Ringzentrum (Three.js 0,0) nach außen
             const ex  = sw(targetX), ez = sw(targetY);
             const len = Math.hypot(ex, ez) || 1;
-            target._elimStartX = ex;
-            target._elimStartZ = ez;
+            // Startpunkt = aktuelle visuelle Position (nicht Server-Knockback-Pos.)
+            // → verhindert Ruckler besonders bei Kick (größere Reichweite)
+            target._elimStartX = target.group.position.x;
+            target._elimStartZ = target.group.position.z;
             target._elimDirX   = ex / len;
             target._elimDirZ   = ez / len;
           }
           if (targetId === this.selfId) this.stunUntil = Date.now() + 300;
           this._addHitFx(sw(targetX), sw(targetY));
         }
-        if (atk) {
+        // Angreifer-Animation nur setzen wenn der Angreifer selbst nicht eliminiert ist
+        // (Guard verhindert, dass _kickT die Elimination-Animation überschreibt)
+        if (atk && !atk.eliminated) {
           if (type === 'kick') atk._kickT = Date.now();
           if (type === 'slap') atk._slapT = Date.now();
         }
