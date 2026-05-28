@@ -58,8 +58,9 @@ async function _addScore(entry) {
   }
   // Datei-Fallback
   try {
-    const raw  = fs.readFileSync(HIGHSCORE_FILE, 'utf8');
-    const arr  = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+    const raw    = fs.readFileSync(HIGHSCORE_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    const arr    = Array.isArray(parsed) ? parsed : [];
     arr.push(entry);
     arr.sort((a, b) => b.score - a.score);
     arr.splice(10);
@@ -169,6 +170,7 @@ io.on('connection', (socket) => {
 
   // ── join ────────────────────────────────────────────────
   socket.on('join', ({ name, faceData, skinColor, shirtColor, hairStyle, hairColor }) => {
+    if (players[socket.id]) return;   // Mehrfach-Join verhindern
     // faceData: max. 200 KB, muss ein Data-URL-Bild sein
     const MAX_FACE = 200_000;
     let safeFace = null;
@@ -187,8 +189,16 @@ io.on('connection', (socket) => {
       shirtColor: shirtColor || null, petId: null,
       hairStyle: hairStyle || null, hairColor: hairColor || null
     };
-    socket.emit('init', { selfId: socket.id, players, boothCounts: getBoothCounts(), petOwners });
+    // Init ohne faceData senden – bei 30 Spielern × 200 KB würde der Payload 5 MB überschreiten
+    const initPlayers = {};
+    Object.entries(players).forEach(([id, p]) => { initPlayers[id] = { ...p, faceData: null }; });
+    socket.emit('init', { selfId: socket.id, players: initPlayers, boothCounts: getBoothCounts(), petOwners });
     socket.broadcast.emit('playerJoined', players[socket.id]);
+    // Gesichter bestehender Spieler einzeln nachliefern (je ≤ 200 KB statt einmalig > 5 MB)
+    Object.values(players).forEach(p => {
+      if (p.id !== socket.id && p.faceData)
+        socket.emit('playerFaceUpdate', { id: p.id, faceData: p.faceData });
+    });
     console.log(`  "${players[socket.id].name}" beigetreten – ${Object.keys(players).length} Spieler`);
   });
 
@@ -330,7 +340,8 @@ io.on('connection', (socket) => {
     if (Math.abs(cx - x) > 0.01 || Math.abs(cy - y) > 0.01) {
       socket.emit('ks:moved', { id: socket.id, x: cx, y: cy });
     }
-    socket.to(_ksAllIds(game)).emit('ks:moved', { id: socket.id, x: cx, y: cy });
+    // _emit() statt socket.to(array) – socket.to(array) ist in manchen Socket.io-Versionen unzuverlässig
+    _emit(_ksAllIds(game).filter(id => id !== socket.id), 'ks:moved', { id: socket.id, x: cx, y: cy });
   });
 
   socket.on('ks:attack', ({ type }) => {
@@ -362,7 +373,7 @@ io.on('connection', (socket) => {
     target.stunUntil = now + 250;
 
     const eliminated = Math.hypot(target.x - 5, target.y - 5) > 4.4;
-    if (eliminated) { target.eliminated = true; }
+    if (eliminated) { target.eliminated = true; target.elimTime = now; }
 
     _emit(allIds, 'ks:hit', {
       attackerId: att.id, targetId: target.id, type,
@@ -399,6 +410,10 @@ io.on('connection', (socket) => {
   socket.on('fp:faceComplete', ({ faceData }) => {
     const game = _fpGameOf(socket.id);
     if (!game || socket.id !== game.painter) return;
+    // faceData validieren – gleiche Regeln wie im join-Handler
+    if (!faceData || typeof faceData !== 'string') return;
+    if (faceData.length > 200_000) return;
+    if (!faceData.startsWith('data:image/') || !faceData.includes(';base64,')) return;
     const subjectId = game.subject;
     if (players[subjectId]) players[subjectId].faceData = faceData;
     _emit(_fpAllIds(game), 'fp:faceUpdate', { playerId: subjectId, faceData });
@@ -525,6 +540,7 @@ io.on('connection', (socket) => {
       if (gt === 'kickslap' && game.players[sid]) {
         // Als eliminiert markieren und Gewinner prüfen
         game.players[sid].eliminated = true;
+        game.players[sid].elimTime   = Date.now();
         _ksCheckWinner(game);
         break;
       }
@@ -541,6 +557,19 @@ io.on('connection', (socket) => {
         const min = GAME_MIN_PLAYERS[gt] || 2;
         if (game.players.length < min) {
           _abortGame(boothId, 'Zu wenige Spieler — Spiel abgebrochen.');
+        } else if (gt === 'polls' && game.phase === 'voting') {
+          // Prüfen ob die verbleibenden Stimmen die Runde bereits abschließen
+          const votedCount = Object.keys(game.votes[game.currentQ] || {})
+            .filter(vid => game.players.includes(vid)).length;
+          if (votedCount >= game.players.length) {
+            if (game._timer) { clearTimeout(game._timer); game._timer = null; }
+            _poProcessRound(game);
+          }
+        } else if (gt === 'speedmaths' && game.phase === 'question') {
+          if (game.answered.size >= game.players.length) {
+            if (game._timer) { clearTimeout(game._timer); game._timer = null; }
+            _smEndRound(game);
+          }
         }
         break;
       }
@@ -611,7 +640,8 @@ setInterval(() => {
     if (idle >= AFK_KICK_MS) {
       console.log(`[AFK] "${players[id]?.name || id}" abgemeldet (${Math.round(idle / 1000)}s inaktiv)`);
       s.emit('afk:kick');
-      s.disconnect(true);
+      // Kurze Verzögerung – Event muss den Client erreichen bevor die Verbindung getrennt wird
+      setTimeout(() => s.disconnect(true), 500);
     } else if (idle >= AFK_WARN_MS && !afkWarnedSet.has(id)) {
       afkWarnedSet.add(id);
       s.emit('afk:warn', Math.ceil((AFK_KICK_MS - idle) / 1000));
@@ -631,7 +661,7 @@ function _startKickSlap(boothId, playerIds) {
   active.forEach((id, i) => {
     const a = (i / active.length) * Math.PI * 2;
     game.players[id] = { id, x: 5 + Math.cos(a) * 2.5, y: 5 + Math.sin(a) * 2.5,
-      eliminated: false, lastAttack: 0, stunUntil: 0 };
+      eliminated: false, lastAttack: 0, stunUntil: 0, elimTime: null };
   });
   activeGames[boothId] = game;
 
@@ -675,7 +705,12 @@ function _ksCheckWinner(game) {
     _emit(_ksAllIds(game), 'ks:end', {
       winnerId: winner?.id || null,
       rankings: Object.values(game.players)
-        .sort((a, b) => (a.eliminated ? 1 : 0) - (b.eliminated ? 1 : 0))
+        .sort((a, b) => {
+          if (!a.eliminated && !b.eliminated) return 0;
+          if (!a.eliminated) return -1;   // Gewinner zuerst
+          if (!b.eliminated) return  1;
+          return (b.elimTime || 0) - (a.elimTime || 0);  // später eliminiert = besserer Rang
+        })
         .map(p => ({ id: p.id, name: players[p.id]?.name || '?' }))
     });
     setTimeout(() => { delete activeGames[game.boothId]; }, 10000);
@@ -867,6 +902,7 @@ function _cleanupOnDisconnect(sid) {
 
     if (gt === 'kickslap' && game.players[sid]) {
       game.players[sid].eliminated = true;
+      game.players[sid].elimTime   = Date.now();
       _ksCheckWinner(game);
 
     } else if (gt === 'facepaint' && _fpAllIds(game).includes(sid)) {
@@ -878,6 +914,18 @@ function _cleanupOnDisconnect(sid) {
       const min = GAME_MIN_PLAYERS[gt] || 2;
       if (game.players.length < min) {
         _abortGame(boothId, 'Ein Spieler hat die Welt verlassen — Spiel abgebrochen.');
+      } else if (gt === 'polls' && game.phase === 'voting') {
+        const votedCount = Object.keys(game.votes[game.currentQ] || {})
+          .filter(vid => game.players.includes(vid)).length;
+        if (votedCount >= game.players.length) {
+          if (game._timer) { clearTimeout(game._timer); game._timer = null; }
+          _poProcessRound(game);
+        }
+      } else if (gt === 'speedmaths' && game.phase === 'question') {
+        if (game.answered.size >= game.players.length) {
+          if (game._timer) { clearTimeout(game._timer); game._timer = null; }
+          _smEndRound(game);
+        }
       }
     }
   }
@@ -897,7 +945,7 @@ function _startRacealong(boothId, playerIds) {
   if (playerIds.length < 2) return false;
   const game = {
     type: 'racealong', boothId, active: true,
-    players: playerIds, finished: new Set(), _timer: null
+    players: playerIds, finished: new Set(), ended: false, _timer: null
   };
   activeGames[boothId] = game;
 
@@ -943,7 +991,8 @@ function _raGameOf(sid) {
   return null;
 }
 function _raEnd(game, rankings) {
-  if (!activeGames[game.boothId]) return;
+  if (!activeGames[game.boothId] || game.ended) return;
+  game.ended  = true;
   game.active = false;
   if (game._timer) { clearTimeout(game._timer); game._timer = null; }
   _emit(game.players, 'ra:result', { rankings });

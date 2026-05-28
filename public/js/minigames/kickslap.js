@@ -464,13 +464,22 @@ export class KickSlapGame {
             target._elimT      = Date.now();
             // Auswurfsrichtung: vom Ringzentrum (Three.js 0,0) nach außen
             const ex  = sw(targetX), ez = sw(targetY);
-            const len = Math.hypot(ex, ez) || 1;
+            const len = Math.hypot(ex, ez);
             // Startpunkt = aktuelle visuelle Position (nicht Server-Knockback-Pos.)
             // → verhindert Ruckler besonders bei Kick (größere Reichweite)
             target._elimStartX = target.group.position.x;
             target._elimStartZ = target.group.position.z;
-            target._elimDirX   = ex / len;
-            target._elimDirZ   = ez / len;
+            if (len > 0.001) {
+              target._elimDirX = ex / len;
+              target._elimDirZ = ez / len;
+            } else {
+              // Fallback wenn Avatar genau im Ringzentrum eliminiert wird:
+              // aktuelle visuelle Position als Richtungsvektor verwenden
+              const vx = target.group.position.x, vz = target.group.position.z;
+              const vl = Math.hypot(vx, vz) || 1;
+              target._elimDirX = vx / vl;
+              target._elimDirZ = vz / vl;
+            }
           }
           if (targetId === this.selfId) this.stunUntil = Date.now() + 300;
           this._addHitFx(sw(targetX), sw(targetY));
