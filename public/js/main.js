@@ -176,6 +176,8 @@ const flappyPanel = document.getElementById('flappyPanel');
 function showFlappyPanel() {
   _renderFlappyPanel();
   flappyPanel.classList.remove('hidden');
+  // Highscores beim Öffnen immer aktuell laden
+  network.socket.emit('fc:getHighscore');
 }
 
 function hideFlappyPanel() {
@@ -259,7 +261,13 @@ function _renderFlappyPanel() {
 
 function _fillHsList(container, scores) {
   container.innerHTML = '';
-  if (!scores || scores.length === 0) return;
+  if (!scores || scores.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'color:#667788;font:13px Arial;text-align:center;padding:8px 0;';
+    empty.textContent = 'Noch keine Einträge – sei der Erste! 🚁';
+    container.appendChild(empty);
+    return;
+  }
   const medal = ['🥇', '🥈', '🥉'];
   const header = document.createElement('div');
   header.style.cssText = 'color:#7799ee;font:bold 13px Arial;text-align:center;margin-bottom:4px;';

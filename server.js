@@ -154,8 +154,8 @@ io.on('connection', (socket) => {
 
   // ── join ────────────────────────────────────────────────
   socket.on('join', ({ name, faceData, skinColor, shirtColor, hairStyle, hairColor }) => {
-    // faceData: max. 65 KB, muss ein Data-URL-Bild sein
-    const MAX_FACE = 65_000;
+    // faceData: max. 200 KB, muss ein Data-URL-Bild sein
+    const MAX_FACE = 200_000;
     let safeFace = null;
     if (faceData && typeof faceData === 'string') {
       if (faceData.length > MAX_FACE) { socket.emit('serverError', 'faceData zu groß'); return; }
